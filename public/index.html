@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cerveau Cramé</title>
+<meta name="description" content="Ton cerveau est-il cramé par l'IA ? Test adaptatif sur 8 axes : température à cœur, archétype parmi 12, comparaison avec les autres joueurs.">
+<meta property="og:title" content="Ton cerveau est-il cramé par l'IA ?">
+<meta property="og:description" content="Test adaptatif : ta température à cœur, ton archétype parmi 12, et où tu te situes face aux autres.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#080A16">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%232F45FF'/%3E%3Cstop offset='.5' stop-color='%23E8338B'/%3E%3Cstop offset='1' stop-color='%23FFD23F'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath d='M16 6a3 3 0 0 0-3 3v9.5a5 5 0 1 0 6 0V9a3 3 0 0 0-3-3z' fill='%2314081A'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<!-- ================= LANDING ================= -->
+<main id="s-land" class="screen">
+  <div class="wrap">
+    <header class="topbar">
+      <div class="logo"><span class="logo-mark" data-icon="thermo"></span>Cerveau Cramé</div>
+      <span class="chip" id="land-count" hidden></span>
+    </header>
+
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Test adaptatif · 128 questions en banque · 8 axes</p>
+        <h1 style="margin-top:16px">Ton cerveau est&#8209;il <span class="heat-text">cramé</span> par l'IA&nbsp;?</h1>
+        <p class="lede">Chaque réponse choisit la question suivante. En quelques minutes, on mesure <b>ce que tu délègues vraiment</b> à l'IA : écrire, réfléchir, retenir, décider, aimer. Tu repars avec ta <b>température à cœur</b>, ton <b>archétype parmi 12</b> et ta place face aux autres joueurs.</p>
+        <div class="hero-cta">
+          <button class="btn btn-hot btn-big" data-go="setup">Prendre ma température <span data-icon="arrow"></span></button>
+          <span class="mono" style="color:var(--muted);font-size:.85rem">Gratuit · 4 ou 10 min</span>
+        </div>
+        <div class="hero-meta">
+          <span class="chip"><span data-icon="radar"></span><b>Carte</b> thermique 8 axes</span>
+          <span class="chip"><span data-icon="medal"></span><b>15</b> badges à débloquer</span>
+          <span class="chip"><span data-icon="bolt"></span>Questions <b>bonus</b> cachées</span>
+        </div>
+      </div>
+      <div class="cam" aria-label="Caméra thermique animée d'un cerveau">
+        <canvas id="cam"></canvas>
+        <div class="hud">
+          <i class="corner c1"></i><i class="corner c2"></i><i class="corner c3"></i><i class="corner c4"></i>
+          <span class="tl">THERMO-SCAN · CORTEX</span>
+          <span class="tr"><i class="rec"></i>REC</span>
+          <span class="bl" id="cam-max">MAX --,- °C</span>
+          <div class="readout"><div class="cross"></div><div class="tag" id="cam-temp">--,- °C</div></div>
+          <div class="scale"><span style="top:0">95°</span><span style="top:50%">68°</span><span style="top:100%">42°</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Ce que tu vas recevoir</p>
+        <h2 style="margin-top:10px">Un rapport complet. On te montre le début.</h2>
+        <p>Voici un exemple de rapport. Les parties floutées sont calculées à partir de tes réponses, et se débloquent à la fin du test.</p>
+      </div>
+      <div class="preview">
+        <span class="sticker">Exemple de rapport</span>
+        <div class="pv-card pv-radar">
+          <span class="k">Carte thermique · 8 axes</span>
+          <div id="pv-radar"></div>
+        </div>
+        <div class="pv-card">
+          <span class="pv-lock" data-icon="lock"></span>
+          <span class="k">Ton archétype</span>
+          <div class="v blur">Perroquet Stochastique</div>
+          <p style="color:var(--muted);font-size:.88rem;margin-top:6px">1 profil sur 12 · <span class="blur-soft">7 %</span> des joueurs</p>
+        </div>
+        <div class="pv-card">
+          <span class="pv-lock" data-icon="lock"></span>
+          <span class="k">Température à cœur</span>
+          <div class="v"><span class="blur">71,3</span> °C</div>
+          <div class="gauge-bar" style="margin-top:12px;height:8px"></div>
+        </div>
+        <div class="pv-card">
+          <span class="pv-lock" data-icon="lock"></span>
+          <span class="k">Face aux autres</span>
+          <div class="pv-list">
+            <div class="row"><span>Plus cramé·e que</span><b class="blur">84 %</b></div>
+            <div class="row"><span>Autonomie sans IA</span><b class="blur">6 h 40</b></div>
+            <div class="row"><span>Ton pire binôme</span><b class="blur">Cerveau Bleu</b></div>
+          </div>
+        </div>
+        <div class="pv-foot">
+          <span>+ forces et angles morts · réponses signature · binômes · plan sur 21 jours · carte à partager</span>
+          <button class="btn btn-hot" data-go="setup">Débloquer le mien</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">12 archétypes</p>
+        <h2 style="margin-top:10px">Un seul est toi.</h2>
+        <p>Ton archétype dépend de la forme de ta carte thermique, pas seulement de ta note. Il y en a 8 cachés.</p>
+      </div>
+      <div class="arch-grid" id="arch-grid"></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Échelle de cuisson cérébrale</p>
+        <h2 style="margin-top:10px">Cinq cuissons, de bleu à carbonisé.</h2>
+      </div>
+      <div class="scale5" id="scale5"></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Comment ça marche</p>
+        <h2 style="margin-top:10px">Un test qui te suit à la trace.</h2>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="num">Étape 1</span><h3>Choisis ton terrain</h3><p>Études ou boulot : les scénarios changent selon ta vie. Tu choisis ensuite le mode express ou le diagnostic complet.</p></div>
+        <div class="step"><span class="num">Étape 2</span><h3>Le test s'adapte</h3><p>Une réponse brûlante déclenche une question bonus pour creuser. Une réponse crue, et on part explorer un autre axe.</p></div>
+        <div class="step"><span class="num">Étape 3</span><h3>Ton rapport complet</h3><p>Carte thermique, archétype, comparaisons, badges, et un plan pour faire redescendre la température.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final-cta wrap">
+    <h2>Combien de degrés à cœur&nbsp;?</h2>
+    <p>Presque personne ne ressort bleu. Le seul moyen de savoir, c'est de répondre sans demander à une IA.</p>
+    <button class="btn btn-hot btn-big" data-go="setup">Lancer le test <span data-icon="arrow"></span></button>
+  </section>
+  <footer class="wrap foot">
+    <span>Test humoristique, pas un diagnostic médical.</span>
+    <span>Comparaisons : vrais joueurs dès 50 réponses par groupe, panel modélisé avant.</span>
+  </footer>
+</main>
+
+<!-- ================= SETUP ================= -->
+<main id="s-setup" class="screen" hidden>
+  <div class="wrap narrow">
+    <header class="topbar">
+      <button class="logo linkbtn" style="text-decoration:none;color:var(--fg)" data-go="land"><span class="logo-mark" data-icon="thermo"></span>Cerveau Cramé</button>
+      <span class="chip mono" id="setup-step">Étape 1 / 3</span>
+    </header>
+    <section class="setup">
+      <h1>On calibre le thermomètre.</h1>
+      <p class="sub">Trois réglages, et le test adapte ses scénarios à ta vie.</p>
+
+      <div class="qblock" id="qb-profile">
+        <h2><span class="num">1</span>Tu es plutôt…</h2>
+        <div class="opts two" role="group" aria-label="Profil">
+          <button class="opt" data-set="profile" data-v="etu" aria-pressed="false"><span class="t">Étudiant·e ou jeune actif·ve</span><span class="d">Cours, partiels, stages, premier job, applis de rencontre.</span></button>
+          <button class="opt" data-set="profile" data-v="pro" aria-pressed="false"><span class="t">Professionnel·le en poste</span><span class="d">Réunions, mails clients, reporting, décisions, LinkedIn.</span></button>
+        </div>
+      </div>
+
+      <div class="qblock" id="qb-age">
+        <h2><span class="num">2</span>Ta tranche d'âge</h2>
+        <div class="opts four" role="group" aria-label="Âge">
+          <button class="opt small" data-set="age" data-v="18-24" aria-pressed="false"><span class="t">18–24</span></button>
+          <button class="opt small" data-set="age" data-v="25-34" aria-pressed="false"><span class="t">25–34</span></button>
+          <button class="opt small" data-set="age" data-v="35-44" aria-pressed="false"><span class="t">35–44</span></button>
+          <button class="opt small" data-set="age" data-v="45+" aria-pressed="false"><span class="t">45 et +</span></button>
+        </div>
+      </div>
+
+      <div class="qblock" id="qb-mode">
+        <h2><span class="num">3</span>Ton mode de jeu</h2>
+        <div class="opts two" role="group" aria-label="Mode">
+          <button class="opt" data-set="mode" data-v="express" aria-pressed="false">
+            <span class="t">Express</span><span class="d mono">20 questions · ~4 min</span>
+            <ul>
+              <li class="yes"><span data-icon="check"></span>Rapport complet</li>
+              <li class="yes"><span data-icon="check"></span>Précision du diagnostic ~77 %</li>
+              <li class="no"><span data-icon="x"></span>Questions bonus en cascade limitées</li>
+              <li class="no"><span data-icon="x"></span>Badge Marathon</li>
+            </ul>
+          </button>
+          <button class="opt" data-set="mode" data-v="complet" aria-pressed="false">
+            <span class="badge">Recommandé</span>
+            <span class="t">Diagnostic complet</span><span class="d mono">50 questions · ~10 min</span>
+            <ul>
+              <li class="yes"><span data-icon="check"></span>Rapport complet</li>
+              <li class="yes"><span data-icon="check"></span>Précision du diagnostic ~90 %</li>
+              <li class="yes"><span data-icon="check"></span>Questions bonus en cascade</li>
+              <li class="yes"><span data-icon="check"></span>Badge Marathon</li>
+            </ul>
+          </button>
+        </div>
+      </div>
+
+      <div class="setup-go">
+        <button class="btn btn-hot btn-big" id="btn-start" disabled>C'est parti <span data-icon="arrow"></span></button>
+        <span class="mono" style="color:var(--muted);font-size:.85rem" id="setup-hint">Choisis tes trois réglages.</span>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ================= QUIZ ================= -->
+<main id="s-quiz" class="screen" hidden>
+  <div class="hudbar">
+    <div class="wrap narrow">
+      <div class="hudrow">
+        <div class="hud-left"><div class="hud-chap" id="hud-chap">Chapitre 1 · Préchauffage</div></div>
+        <div class="hud-right">
+          <span class="pill xp" id="hud-xp"><span data-icon="bolt"></span><span id="xp-v">0</span> XP</span>
+          <span class="pill" id="hud-temp"><i class="tdot" id="tdot"></i><span id="temp-v">--,-</span> °C</span>
+          <button class="iconbtn" id="btn-sound" aria-label="Couper le son" data-icon="sound"></button>
+        </div>
+      </div>
+      <div class="prog" id="prog"></div>
+    </div>
+  </div>
+  <div class="wrap narrow quiz">
+    <div class="qcard" id="qcard">
+      <div class="qmeta" id="qmeta"></div>
+      <h2 class="qtext" id="qtext"></h2>
+      <div id="qbody"></div>
+      <div class="qfoot">
+        <button class="linkbtn" id="btn-back">← Précédent</button>
+        <span class="combo" id="combo"></span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ================= COOKING ================= -->
+<main id="s-cook" class="screen" hidden>
+  <div class="wrap narrow cook">
+    <div>
+      <div class="cook-ring">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <defs><linearGradient id="ringg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#2F45FF"/><stop offset=".5" stop-color="#E8338B"/><stop offset="1" stop-color="#FFD23F"/></linearGradient></defs>
+          <circle cx="50" cy="50" r="44" fill="none" stroke="#22274D" stroke-width="8"/>
+          <circle id="ring" cx="50" cy="50" r="44" fill="none" stroke="url(#ringg)" stroke-width="8" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="276.5"/>
+        </svg>
+        <div class="val mono" id="cook-v">0 %</div>
+      </div>
+      <h2>Cuisson du rapport en cours…</h2>
+      <ul class="cook-steps" id="cook-steps"></ul>
+    </div>
+  </div>
+</main>
+
+<!-- ================= GATE ================= -->
+<main id="s-gate" class="screen" hidden>
+  <div class="wrap">
+    <header class="topbar"><div class="logo"><span class="logo-mark" data-icon="thermo"></span>Cerveau Cramé</div><span class="chip" id="gate-prec"></span></header>
+    <section class="gate">
+      <div class="gate-grid">
+        <div class="g-a">
+          <p class="eyebrow">Ton rapport est prêt</p>
+          <h1 style="margin-top:12px">Verdict : <span class="heat-text" id="gate-level">À point</span></h1>
+          <div class="free">
+            <div class="bigtemp mono" id="gate-temp">--,- °C</div>
+            <div class="gauge-bar" style="margin-top:16px"><span class="gauge-mark" id="gate-mark" style="left:0"></span></div>
+            <p style="color:var(--muted);margin-top:16px" id="gate-tag"></p>
+          </div>
+        </div>
+        <ul class="locked-list g-b" id="gate-locked"></ul>
+        <form class="formcard" id="lead-form" novalidate>
+          <h2>Débloque ton rapport complet</h2>
+          <p class="sub">Il s'affiche tout de suite. On t'en envoie aussi une copie pour la garder.</p>
+          <div class="field"><label for="f-name">Prénom</label><input id="f-name" name="name" autocomplete="given-name" maxlength="60" required><span class="err" id="e-name"></span></div>
+          <div class="field"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" autocomplete="email" maxlength="160" required><span class="err" id="e-email"></span></div>
+          <input type="text" id="f-company" name="company" tabindex="-1" autocomplete="off" class="sr" aria-hidden="true">
+          <label class="check"><input type="checkbox" id="f-mkt"><span>J'accepte aussi de recevoir des conseils pour faire redescendre la température, et l'offre Désintox. Désinscription en un clic.</span></label>
+          <button class="btn btn-hot btn-big" type="submit" id="btn-unlock"><span data-icon="unlock"></span>Voir mon rapport complet</button>
+          <p class="fine">Ton e-mail sert à t'envoyer ton rapport. Jamais revendu.</p>
+        </form>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ================= RESULTS ================= -->
+<main id="s-result" class="screen" hidden>
+  <div class="wrap">
+    <header class="topbar"><div class="logo"><span class="logo-mark" data-icon="thermo"></span>Cerveau Cramé</div><button class="btn btn-ghost" id="btn-restart-top" style="padding:.6em 1em;font-size:.88rem">Refaire le test</button></header>
+    <div class="res" id="res"></div>
+  </div>
+</main>
+
+<script src="/assets/content.js"></script>
+<script src="/assets/questions.js"></script>
+<script src="/assets/app.js"></script>
+<script src="/assets/report.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "cerveau-crame",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lead magnet gamifié : test adaptatif « Ton cerveau est-il cramé par l'IA ? » + CRM.",
+  "type": "module",
+  "engines": { "node": ">=20" }
+}
