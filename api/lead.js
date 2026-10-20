@@ -1,6 +1,8 @@
 // POST /api/lead : crée ou met à jour un lead (dédoublonné par e-mail) et calcule son scoring.
 import { rpc, json, body, configured, UUID } from "../lib/supabase.js";
 import { leadFields } from "../lib/scoring.js";
+import { mailConfigured, sendMail } from "../lib/mailer.js";
+import { buildResultEmail } from "../lib/email.js";
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -25,6 +27,13 @@ export default async function handler(req, res) {
       ...(result ? { result_id: result.id, ...leadFields(result, { consent_marketing, ...(result.lead || {}) }) } : {}),
     };
     await rpc("cc_upsert_lead", { p_email: email, p: fields });
+    // e-mail de résultats : attendu avant de répondre (Vercel gèle la fonction après la réponse)
+    if (result && mailConfigured()) {
+      try {
+        const mail = buildResultEmail({ firstName: first_name, result, consentMarketing: consent_marketing });
+        await sendMail({ to: email, ...mail });
+      } catch (e) { console.error("mail", e.message); }
+    }
     return json(res, 200, { ok: true });
   } catch (e) {
     console.error("lead", e.status, e.message);

@@ -52,4 +52,10 @@ The quiz works fully offline. API calls fail silently, and the comparisons fall 
 
 ## Emails
 
-Leads are stored in Supabase with a separate marketing-consent flag. Nothing is emailed automatically yet. Export a CSV from `/admin`, or connect an email tool (Brevo, Klaviyo, Resend) inside `api/lead.js`. Only send offers to leads with `consent_marketing = true`.
+Leads are stored in Supabase with a separate marketing-consent flag.
+
+As soon as the form is submitted, `api/lead.js` sends the results report by email through Gmail (`lib/mailer.js`, template in `lib/email.js`, texts taken from `public/assets/content.js`):
+- **Everyone** gets their report: score, level, archetype, the 8 axes, their two hottest axes and 3 free challenges.
+- **Only leads with `consent_marketing = true`** also get the sales section for the Désintox programme (21-day plan built on their two hottest axes, price, checkout button using `CHECKOUT_URL`).
+
+Setup: turn on 2-step verification on the Gmail account, create an app password at myaccount.google.com/apppasswords, then add `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `MAIL_FROM_NAME` and `SITE_URL` to the Vercel environment variables. Without `GMAIL_USER` and `GMAIL_APP_PASSWORD`, no email is sent. Gmail caps sending at about 500 emails a day; switch to a dedicated provider (Brevo, Resend) beyond that.
