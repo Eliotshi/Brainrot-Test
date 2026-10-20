@@ -1,8 +1,10 @@
-// /api/admin/leads : CRM. Protégé par l'en-tête x-admin-key = ADMIN_PASSWORD.
+// /api/admin/leads : CRM.
+// Le navigateur envoie x-admin-key = ADMIN_PASSWORD ; le serveur appelle ensuite
+// les fonctions cc_admin_* avec le jeton ADMIN_RPC_TOKEN (jamais exposé au navigateur).
 //   GET   → leads + entonnoir
 //   PATCH → { id, status?, notes? }
 import { timingSafeEqual, createHash } from "node:crypto";
-import { sb, json, body, configured, UUID } from "../../lib/supabase.js";
+import { rpc, json, body, configured, UUID } from "../../lib/supabase.js";
 
 const STATUSES = ["nouveau", "contacte", "en_discussion", "converti", "perdu"];
 
@@ -15,42 +17,30 @@ function authorized(req) {
 }
 
 export default async function handler(req, res) {
-  if (!configured()) return json(res, 503, { error: "not_configured" });
+  const token = process.env.ADMIN_RPC_TOKEN;
+  if (!configured() || !token) return json(res, 503, { error: "not_configured" });
+  if (!process.env.ADMIN_PASSWORD) return json(res, 503, { error: "admin_password_missing" });
   if (!authorized(req)) { await new Promise(r => setTimeout(r, 400)); return json(res, 401, { error: "unauthorized" }); }
   try {
     if (req.method === "GET") {
-      const leads = await sb("leads?select=*&order=created_at.desc&limit=5000");
-      const countOf = async path => {
-        const r = await fetch(`${process.env.SUPABASE_URL}/rest/v1/${path}`, { method: "HEAD", headers: authHeaders("count=exact") });
-        const range = r.headers.get("content-range") || "*/0"; return Number(range.split("/")[1]) || 0;
-      };
-      const [results, offerClicks, shares] = await Promise.all([
-        countOf("results?select=id"),
-        countOf("results?select=id&events=cs.%7Boffer_click%7D"),
-        countOf("results?select=id&events=cs.%7Bshare%7D"),
-      ]);
-      return json(res, 200, { leads, funnel: { results, leads: leads.length, offerClicks, shares } });
+      const data = await rpc("cc_admin_list", { p_token: token });
+      return json(res, 200, { leads: data.leads, funnel: { ...data.funnel, leads: data.leads.length } });
     }
     if (req.method === "PATCH") {
       const b = body(req);
       if (!UUID.test(b.id || "")) return json(res, 400, { error: "invalid_id" });
-      const patch = {};
-      if (b.status !== undefined) { if (!STATUSES.includes(b.status)) return json(res, 400, { error: "invalid_status" }); patch.status = b.status; }
-      if (b.notes !== undefined) patch.notes = String(b.notes).slice(0, 4000);
-      if (!Object.keys(patch).length) return json(res, 400, { error: "empty_patch" });
-      const r = await sb(`leads?id=eq.${b.id}`, { method: "PATCH", body: patch, prefer: "return=representation" });
-      return json(res, 200, { lead: r[0] || null });
+      if (b.status !== undefined && !STATUSES.includes(b.status)) return json(res, 400, { error: "invalid_status" });
+      if (b.status === undefined && b.notes === undefined) return json(res, 400, { error: "empty_patch" });
+      const lead = await rpc("cc_admin_update", {
+        p_token: token, p_id: b.id,
+        p_status: b.status ?? null,
+        p_notes: b.notes === undefined ? null : String(b.notes).slice(0, 4000),
+      });
+      return json(res, 200, { lead });
     }
     return json(res, 405, { error: "method_not_allowed" });
   } catch (e) {
     console.error("admin", e.status, e.message);
     return json(res, 500, { error: "db_error" });
   }
-}
-
-function authHeaders(prefer) {
-  const KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const h = { apikey: KEY, Prefer: prefer };
-  if (KEY.startsWith("eyJ")) h.Authorization = `Bearer ${KEY}`;
-  return h;
 }

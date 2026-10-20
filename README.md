@@ -4,7 +4,7 @@ A gamified lead magnet: the adaptive quiz « Ton cerveau est-il cramé par l'IA 
 
 - **Front end:** static HTML, CSS and JS in `public/`, with no build step.
 - **API:** Vercel serverless functions in `api/`, with no npm dependencies.
-- **Database:** Supabase Postgres. Tables are locked down with RLS, and only the server-side secret key can read or write them.
+- **Database:** Supabase Postgres. Tables are locked down with RLS. The server uses the publishable key and goes through `public.cc_*` functions; the CRM functions also require a server token.
 
 ## How it works
 
@@ -32,11 +32,13 @@ A gamified lead magnet: the adaptive quiz « Ton cerveau est-il cramé par l'IA 
 
 ## Setup
 
-1. **Supabase:** create a project and run `supabase/migrations/20261020000000_init.sql` in the SQL editor (or with `supabase db push`).
+1. **Supabase:** run both files in `supabase/migrations/` in order, then store the hash of your server token:
+   `insert into private.app_config values ('admin_token_sha256', encode(extensions.digest('<ADMIN_RPC_TOKEN>', 'sha256'), 'hex'));`
 2. **Vercel:** import this GitHub repo. The framework preset is "Other", with no build command. `vercel.json` sets the output directory to `public`.
 3. **Vercel environment variables** (see `.env.example`):
    - `SUPABASE_URL`
-   - `SUPABASE_SECRET_KEY`: the `sb_secret_…` key, or the legacy `service_role` key.
+   - `SUPABASE_PUBLISHABLE_KEY`
+   - `ADMIN_RPC_TOKEN`: a long random string. Its SHA-256 hash must match the one stored in step 1.
    - `ADMIN_PASSWORD`: at least 12 characters. It protects `/admin`.
 4. **Payment link:** paste your Stripe Payment Link (or other checkout URL) into `CHECKOUT_URL` in `public/assets/content.js`. The result id is passed along as `client_reference_id`.
 

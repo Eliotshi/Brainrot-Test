@@ -20,7 +20,12 @@ try { KEY = sessionStorage.getItem("cc_admin"); } catch {}
 async function api(method, body) {
   const r = await fetch("/api/admin/leads", { method, headers: { "x-admin-key": KEY, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 401) throw Object.assign(new Error("unauthorized"), { code: 401 });
-  if (!r.ok) throw new Error("Erreur serveur (" + r.status + ")");
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    if (d.error === "admin_password_missing") throw new Error("Le mot de passe du CRM n'est pas encore défini : ajoute ADMIN_PASSWORD dans les variables d'environnement Vercel, puis redéploie.");
+    if (d.error === "not_configured") throw new Error("Le serveur n'est pas relié à Supabase : vérifie SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY et ADMIN_RPC_TOKEN sur Vercel.");
+    throw new Error("Erreur serveur (" + r.status + ")");
+  }
   return r.json();
 }
 

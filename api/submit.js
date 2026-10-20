@@ -1,5 +1,5 @@
 // POST /api/submit : enregistre (ou met à jour) un résultat anonyme.
-import { sb, json, body, configured, UUID } from "../lib/supabase.js";
+import { rpc, json, body, configured, UUID } from "../lib/supabase.js";
 import { leadFields } from "../lib/scoring.js";
 
 const AXES = ["plume", "pensee", "memoire", "boussole", "attention", "idees", "coeur", "perroquet"];
@@ -49,18 +49,14 @@ export default async function handler(req, res) {
   const row = cleanResult(b);
   if (!row) return json(res, 400, { error: "invalid_result" });
   try {
-    if (b.result_id && UUID.test(b.result_id)) {
-      // mise à jour (passage Express → Complet) : on garde utm et événements d'origine
-      delete row.utm;
-      const up = await sb(`results?id=eq.${b.result_id}`, { method: "PATCH", body: row, prefer: "return=representation" });
-      if (up && up[0]) {
-        const leads = await sb(`leads?result_id=eq.${b.result_id}&select=id,consent_marketing`);
-        if (leads && leads[0]) await sb(`leads?id=eq.${leads[0].id}`, { method: "PATCH", body: leadFields(up[0], { consent_marketing: leads[0].consent_marketing }) });
-        return json(res, 200, { result_id: b.result_id });
-      }
+    const pid = b.result_id && UUID.test(b.result_id) ? b.result_id : null;
+    const id = await rpc("cc_save_result", { p: row, p_id: pid });
+    if (pid && id === pid) {
+      // mise à jour (passage Express → Complet) : on recalcule le scoring du lead lié
+      const result = await rpc("cc_get_result", { p_id: id });
+      if (result && result.lead) await rpc("cc_update_lead_by_result", { p_result_id: id, p: leadFields(result, result.lead) });
     }
-    const ins = await sb("results?select=id", { method: "POST", body: row, prefer: "return=representation" });
-    return json(res, 200, { result_id: ins[0].id });
+    return json(res, 200, { result_id: id });
   } catch (e) {
     console.error("submit", e.status, e.message);
     return json(res, 500, { error: "db_error" });
