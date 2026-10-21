@@ -11,7 +11,7 @@ A gamified lead magnet: the adaptive quiz « Ton cerveau est-il cramé par l'IA 
 | Piece | Where |
 |---|---|
 | Question bank: 128 questions, 8 axes, student and pro scenarios, follow-ups | `public/assets/questions.js` |
-| Axes, levels, 12 archetypes, badges, bonus "plan de sauvetage" chapter, modelled panel | `public/assets/content.js` |
+| Axes, levels, 12 archetypes, badges, bonus "plan de sauvetage" chapter | `public/assets/content.js` |
 | Adaptive engine, gamification, gate | `public/assets/app.js` |
 | Results report, radar, comparisons, share card | `public/assets/report.js` |
 | Lead scoring: buying power, motivation, segment, incentive | `lib/scoring.js` |
@@ -23,7 +23,7 @@ A gamified lead magnet: the adaptive quiz « Ton cerveau est-il cramé par l'IA 
 - Hot axes get harder questions, which separates "bien cuit" from "carbonisé".
 - Every axis is guaranteed at least 2 questions in Express (20) and 5 in Complet (50).
 
-**Comparisons.** `/api/stats` returns aggregated means per profile × age group, cached for 10 minutes. A group switches from the modelled panel to real data once it has at least 50 players.
+**Comparisons.** `/api/stats` returns aggregated means per profile × age group, cached for 10 minutes. Percentiles, group averages and the group overlay on the radar are shown only once a group has at least 50 real players; before that, the report shows the progress (n/50) and an invite button. Archetype rarity appears from 200 real results. Nothing is simulated.
 
 **CRM scoring** (`lib/scoring.js`):
 - **Buying power:** work situation 35 %, past spending on training 30 %, who pays 25 %, age 10 %.
@@ -48,7 +48,7 @@ A gamified lead magnet: the adaptive quiz « Ton cerveau est-il cramé par l'IA 
 python3 -m http.server 8080 --directory public
 ```
 
-The quiz works fully offline. API calls fail silently, and the comparisons fall back to the modelled panel. To run the API locally, use `vercel dev`.
+The quiz works fully offline. API calls fail silently, and no comparison is shown. To run the API locally, use `vercel dev`.
 
 ## Emails
 

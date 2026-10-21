@@ -573,7 +573,7 @@ async function finish() {
   const steps = [
     `Analyse de tes ${S.answers.length} réponses`,
     "Calcul des 8 axes de cuisson",
-    `Comparaison avec les ${PROFILES_PL[S.profile]} de ${S.age} ans`,
+    "Sélection de tes réponses signature",
     "Identification de ton archétype parmi 12",
     "Rédaction de ton plan sur 21 jours",
   ];
@@ -616,18 +616,23 @@ function renderGate(R) {
   $("#gate-temp").textContent = fr1(R.temp) + " °C";
   $("#gate-temp").style.color = heatCSS(R.overall / 100);
   $("#gate-tag").textContent = R.level.tag + " Ton rapport détaillé t'attend juste à côté.";
-  $("#gate-prec").textContent = `Précision ${R.precision} % · ${S.answers.length} réponses`;
+  $("#gate-prec").textContent = `Diagnostic ${S.target >= 50 ? "complet" : "express"} · ${S.answers.length} questions`;
+  // aucune promesse d'envoi tant que l'e-mail n'est pas configuré côté serveur
+  const mailOn = !!(LIVE && LIVE.mail_enabled);
+  $("#gate-copy").textContent = mailOn ? " On t'en envoie aussi une copie pour la garder." : "";
+  $("#gate-fine").textContent = mailOn ? "Ton e-mail sert à t'envoyer ton rapport. Jamais revendu." : "Ton e-mail n'est jamais revendu.";
   const locked = [
     ["Ton archétype parmi 12", R.arch.name],
     ["Ta carte thermique sur 8 axes", "8 axes"],
-    [`Ta place face aux ${PROFILES_PL[S.profile]}`, `Top ${100 - R.pctGroup} %`],
+    ...(R.pctGroup != null ? [[`Ta place face aux ${PROFILES_PL[S.profile]}`, `Top ${100 - R.pctGroup} %`]] : []),
     ["Ton autonomie sans IA", R.autonomy],
     ["Tes binômes : allié·e et pire ennemi·e", ARCHETYPES[R.arch.ally].name],
     ["Tes 15 badges et tes réponses signature", `${S.badges.length}/15`],
     ["Ton plan sur 21 jours", "3 semaines"],
   ];
   // decoy text of the same shape: the real values never reach the DOM before the email
-  const scramble = v => String(v).replace(/[A-Za-zÀ-ÿ]/g, () => "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]).replace(/[0-9]/g, () => Math.floor(Math.random() * 10));
+  // les lettres sont brouillées, les nombres deviennent « ·· » (jamais de faux chiffre affiché)
+  const scramble = v => String(v).replace(/[A-Za-zÀ-ÿ]/g, () => "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]).replace(/[0-9]+/g, "··");
   $("#gate-locked").replaceChildren(...locked.map(([k, v]) => el("li", {}, el("span", { html: icon("lock") }), el("span", {}, k), el("span", { class: "blur-soft", "aria-hidden": "true" }, scramble(v)))));
   show("gate");
   T("email_view", { props: { where: "end" } });
@@ -669,7 +674,7 @@ function extendRun() {
   const done = Math.floor(S.answers.length / chapterSize());
   overlay(el("div", { class: "ovcard" },
     el("p", { class: "eyebrow" }, "Mode complet activé"),
-    el("h2", {}, "30 questions de plus, précision +13 points"),
+    el("h2", {}, "30 questions de plus pour affiner chaque axe"),
     el("p", { style: "color:var(--muted);margin-top:12px" }, "Tes réponses sont gardées. On creuse maintenant tes axes les plus chauds."),
     el("button", { class: "btn btn-hot btn-big", onclick: e => { e.target.closest(".overlay").remove(); nextQuestion(); } }, `Chapitre ${done + 1} · ${CHAPTERS[done]}`, el("span", { "data-icon": "arrow" }))));
 }
