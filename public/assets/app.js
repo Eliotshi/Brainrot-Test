@@ -528,7 +528,7 @@ function chapterBreak(done) {
 
 /* ---------- end of main quiz → bonus chapter ---------- */
 function endOfMain() {
-  if (S.extended || Object.keys(S.qual).length >= QUAL.length) return finish();
+  if (S.extended || isMinor15(S.age) || Object.keys(S.qual).length >= QUAL.length) return finish();
   Snd.chapter(); FX.confetti(90); S.xp += 50; updateHUD();
   overlay(el("div", { class: "ovcard" },
     el("p", { class: "eyebrow" }, `${S.answers.length} questions · diagnostic terminé`),
@@ -567,6 +567,7 @@ function renderQual() {
    ============================================================ */
 async function finish() {
   if (S.answers.length >= 50) award("marathon");
+  if (isMinor15(S.age)) S.unlocked = true; // moins de 15 ans : rapport sans e-mail (art. 45 loi Informatique et Libertés)
   const R = computeReport();
   show("cook");
   Snd.whoosh();
@@ -654,7 +655,7 @@ $("#lead-form").addEventListener("submit", async e => {
   const R = S._R;
   // make sure the result row exists before linking the lead
   if (!S.resultId) { const d = await API.post("/api/submit", payload(R)); if (d && d.result_id) S.resultId = d.result_id; }
-  API.post("/api/lead", { result_id: S.resultId, first_name: name, email, consent_marketing: $("#f-mkt").checked, company: $("#f-company").value, utm });
+  API.post("/api/lead", { result_id: S.resultId, first_name: name, email, consent_marketing: $("#f-mkt").checked, consents: { report: true, newsletter: $("#f-mkt").checked }, consent_version: CONSENT_TEXTS.version, source: "gate", company: $("#f-company").value, utm });
   T("email_submit", { props: { where: "end" } });
   if (S.mkt) T("optin", { props: { purpose: "newsletter" } });
   renderReport(R); show("result"); FX.confetti(180); Snd.badge();
@@ -685,6 +686,7 @@ $("#btn-sound").addEventListener("click", () => { Snd.on = !Snd.on; store.set("c
 
 /* ---------- boot ---------- */
 addEventListener("DOMContentLoaded", () => {
+  $("#f-mkt-label").textContent = CONSENT_TEXTS.newsletter;
   hydrateIcons(); soundBtn(); renderLanding(); show("land");
   $("#btn-restart-top").addEventListener("click", () => location.reload());
 });

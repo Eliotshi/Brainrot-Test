@@ -184,7 +184,24 @@ const REACTIONS = [
 
 const PROFILES = { etu:"Étudiant·e / jeune actif·ve", pro:"Professionnel·le en poste" };
 const PROFILES_PL = { etu:"étudiant·es et jeunes actif·ves", pro:"pros" };
-const AGES = ["18-24","25-34","35-44","45+"];
+const AGES = ["<15","15-17","18-24","25-34","35-44","45+"];
+const AGE_LABELS = { "<15": "moins de 15 ans", "15-17": "15-17 ans", "18-24": "18-24 ans", "25-34": "25-34 ans", "35-44": "35-44 ans", "45+": "45 ans et +" };
+const isMinor15 = age => age === "<15";     // aucune collecte d'e-mail ni marketing (art. 45 loi Informatique et Libertés)
+const isUnder18 = age => age === "<15" || age === "15-17";
+
+/* ------------------------------------------------------------
+   TEXTES DE CONSENTEMENT · le texte affiché et le texte stocké
+   viennent de cette constante (lue aussi par le serveur via lib/content.js).
+   Changer un texte = changer la version.
+   ------------------------------------------------------------ */
+const CONSENT_TEXTS = {
+  version: "2026-10-v1",
+  report: "Mon e-mail sert à débloquer mon rapport et à me l'envoyer. Rien d'autre sans mon accord.",
+  newsletter: "J'accepte aussi de recevoir des conseils pour faire redescendre la température, et l'offre Désintox. Désinscription en un clic.",
+  partners: "Je veux recevoir des offres de partenaires choisis par Cerveau Cramé. Mon e-mail ne leur est jamais transmis.",
+  duel_notify: "Préviens-moi quand quelqu'un relève mon défi.",
+  show_name: "Afficher mon prénom sur mon lien de défi.",
+};
 
 /* ------------------------------------------------------------
    CHAPITRE BONUS · « Ton plan de sauvetage »
