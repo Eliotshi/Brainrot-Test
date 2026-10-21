@@ -1,3 +1,7 @@
+/* Polices auto-hébergées (OFL) : aucun appel à un domaine tiers */
+@font-face{font-family:"Unbounded";src:url("/fonts/unbounded-latin.woff2") format("woff2");font-weight:200 900;font-style:normal;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Onest";src:url("/fonts/onest-latin.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"JetBrains Mono";src:url("/fonts/jetbrainsmono-latin.woff2") format("woff2");font-weight:100 800;font-style:normal;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 /* Layout concept: a thermal-camera viewfinder. Dark ground, heat gradient as the only accent, mono readouts like an instrument. */
 :root{
   color-scheme: dark;
@@ -141,6 +145,7 @@ a{color:var(--t5)}
 .opts{display:grid;gap:12px;margin-top:14px}
 .opts.two{grid-template-columns:1fr 1fr}
 .opts.four{grid-template-columns:repeat(4,1fr)}
+.opts.six{grid-template-columns:repeat(6,1fr)}
 .opt{text-align:left;border:1.5px solid var(--line);background:var(--ink2);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,transform .15s,background .15s;position:relative;min-width:0}
 .opt:hover{border-color:var(--muted);transform:translateY(-1px)}
 .opt[aria-pressed="true"]{border-color:var(--t4);background:linear-gradient(180deg,rgba(255,122,26,.16),rgba(232,51,139,.08));box-shadow:0 0 0 1.5px var(--t4),0 12px 34px -14px rgba(255,122,26,.7)}
@@ -439,6 +444,7 @@ details.method div{color:var(--muted);font-size:.92rem;margin-top:10px;display:g
   .hero{gap:28px}
   .cam{max-width:520px;width:100%;margin:0 auto}
   .arch-grid{grid-template-columns:repeat(2,1fr)}
+  .opts.six{grid-template-columns:repeat(3,1fr)}
   .scale5{grid-template-columns:repeat(5,minmax(0,1fr))}
   .stats{grid-template-columns:repeat(2,1fr)}
   .badges{grid-template-columns:repeat(3,1fr)}
@@ -455,6 +461,7 @@ details.method div{color:var(--muted);font-size:.92rem;margin-top:10px;display:g
   .steps{grid-template-columns:1fr}
   .opts.two{grid-template-columns:1fr}
   .opts.four{grid-template-columns:repeat(2,1fr)}
+  .opts.six{grid-template-columns:repeat(3,1fr)}
   .answers.vs{grid-template-columns:1fr}
   .vsdot{justify-self:center}
   .answers.vs .ans{min-height:96px}
@@ -477,3 +484,19 @@ details.method div{color:var(--muted);font-size:.92rem;margin-top:10px;display:g
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+/* ---------- pied de page légal (tous les écrans) ---------- */
+.legal-foot{display:flex;flex-wrap:wrap;gap:6px 10px;justify-content:center;padding-block:18px 28px;font-size:.8rem;color:var(--dim)}
+.legal-foot a{color:var(--muted)}
+.fine a{color:var(--muted)}
+
+/* ---------- pages légales ---------- */
+.legal-page{max-width:760px;padding-block:8px 40px}
+.legal-page h1{font-size:clamp(1.8rem,4vw,2.4rem);margin-top:12px}
+.legal-page h2{font-family:var(--f-body);font-size:1.15rem;font-weight:700;margin-top:30px}
+.legal-page p,.legal-page li{color:var(--muted);margin-top:10px;max-width:65ch}
+.legal-page b{color:var(--fg)}
+.legal-page ul{padding-left:20px}
+.legal-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.92rem}
+.legal-table th,.legal-table td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--muted)}
+.legal-table th{color:var(--fg);font-family:var(--f-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase}

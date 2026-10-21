@@ -13,7 +13,7 @@ const str = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max
 
 export function cleanResult(b) {
   if (!["etu", "pro"].includes(b.profile)) return null;
-  if (!["18-24", "25-34", "35-44", "45+"].includes(b.age)) return null;
+  if (!["<15", "15-17", "18-24", "25-34", "35-44", "45+"].includes(b.age)) return null;
   if (!["express", "complet", "complet+"].includes(b.mode)) return null;
   if (!Number.isInteger(b.n_questions) || b.n_questions < 1 || b.n_questions > 60) return null;
   if (!num(b.overall, 0, 100) || !b.scores || typeof b.scores !== "object") return null;

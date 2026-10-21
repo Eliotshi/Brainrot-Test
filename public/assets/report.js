@@ -116,14 +116,15 @@ function confDots(n) { const k = n >= 6 ? 4 : n >= 4 ? 3 : n >= 2 ? 2 : 1; retur
 function renderReport(R) {
   const name = S.name ? esc(S.name) : "Toi";
   const L = R.level, A = R.arch, G = R.G;
-  const grpLbl = `${PROFILES_PL[S.profile]} de ${S.age} ans`;
+  const grpLbl = `${PROFILES_PL[S.profile]} de ${AGE_LABELS[S.age] || S.age}`;
+  const minor = isMinor15(S.age);
   const al = ARCHETYPES[A.ally], cl = ARCHETYPES[A.clash];
   const sig = R.signature.map(a => ({ a, q: QM[a.id] }));
   const cr = R.crudest, crq = QM[cr.id];
   const plan = R.top.map(k => AX[k]);
   const isExpress = S.target < 50;
   const ref = G ? G.means : null, ref2 = R.O ? R.O.means : null;
-  const cmpBars = [["Toi", R.overall, true], [`${PROFILES_PL[S.profile]} ${S.age}`, G?.overall], [PROFILES_PL.etu, refProfile("etu")?.overall], [PROFILES_PL.pro, refProfile("pro")?.overall], ["Tout le monde", R.ALL?.overall]].filter(([, v]) => v != null);
+  const cmpBars = [["Toi", R.overall, true], [`${PROFILES_PL[S.profile]} ${AGE_LABELS[S.age] || S.age}`, G?.overall], [PROFILES_PL.etu, refProfile("etu")?.overall], [PROFILES_PL.pro, refProfile("pro")?.overall], ["Tout le monde", R.ALL?.overall]].filter(([, v]) => v != null);
 
   $("#res").innerHTML = `
   <section class="res-hero">
@@ -171,7 +172,7 @@ function renderReport(R) {
     <div class="radar-wrap">
       <div class="radar-box">
         ${ref || ref2 ? `<div class="toggles" id="r-tg">
-          ${ref ? `<button class="tg" data-tg="ref" aria-pressed="true"><i style="background:#F2F0FF"></i>${esc(PROFILES_PL[S.profile])} ${esc(S.age)}</button>` : ""}
+          ${ref ? `<button class="tg" data-tg="ref" aria-pressed="true"><i style="background:#F2F0FF"></i>${esc(PROFILES_PL[S.profile])} ${esc(AGE_LABELS[S.age] || S.age)}</button>` : ""}
           ${ref2 ? `<button class="tg" data-tg="ref2" aria-pressed="false"><i style="background:#8B3CFF"></i>${esc(PROFILES_PL[R.other])}</button>` : ""}
         </div>` : ""}
         <div id="r-radar"></div>
@@ -263,7 +264,7 @@ function renderReport(R) {
         <p style="color:var(--muted);margin-top:6px;font-size:.94rem">Choisis pour ton axe le plus chaud : ${esc(plan[0].full)} (${R.scores[plan[0].k]}/100).</p>
         <ol>${plan[0].defis.map(d => `<li>${esc(d)}</li>`).join("")}</ol>
       </div>
-      <div class="offer">
+      ${minor ? "" : `<div class="offer">
         <span class="k">Programme Désintox Cérébrale</span>
         <h3>21 jours pour reprendre le volant</h3>
         <p class="why">Construit sur tes deux axes les plus chauds : ${esc(plan[0].name)} et ${esc(plan[1].name)}. 15 minutes par jour.</p>
@@ -275,7 +276,7 @@ function renderReport(R) {
         <div class="price"><span class="p">49 €</span><span class="m">prix de lancement · vidéos, exercices, groupe privé</span></div>
         <button class="btn btn-hot btn-big" id="btn-offer">Je commence ma désintox <span data-icon="arrow"></span></button>
         <p class="offer-note" id="offer-note"></p>
-      </div>
+      </div>`}
     </div>
   </section>
 
@@ -329,7 +330,7 @@ function renderReport(R) {
   $$("#res .axrow").forEach(r => r.addEventListener("click", () => { const o = r.getAttribute("aria-expanded") === "true"; r.setAttribute("aria-expanded", !o); active = r.dataset.axr; drawRadar(); drawAxis(); }));
 
   // offer
-  $("#btn-offer").addEventListener("click", () => {
+  $("#btn-offer")?.addEventListener("click", () => {
     track("offer_click");
     if (CHECKOUT_URL) location.href = CHECKOUT_URL + (CHECKOUT_URL.includes("?") ? "&" : "?") + "client_reference_id=" + encodeURIComponent(S.resultId || "");
     else $("#offer-note").textContent = S.mkt ? "Les inscriptions ouvrent très bientôt. Ton intérêt est noté : on te prévient en premier." : "Les inscriptions ouvrent très bientôt. Coche l'option e-mail au prochain passage pour être prévenu·e en premier.";
