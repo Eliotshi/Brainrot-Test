@@ -21,7 +21,10 @@ export function cleanResult(b) {
   for (const k of AXES) { if (!num(b.scores[k], 0, 100)) return null; scores[k] = Math.round(b.scores[k]); }
   const answers = Array.isArray(b.answers) ? b.answers.slice(0, 60)
     .filter(a => a && str(a.id, 8) && num(a.s, 0, 3))
-    .map(a => ({ id: a.id, s: a.s, dt: Number.isInteger(a.dt) ? Math.min(a.dt, 600000) : null, b: a.b ? 1 : 0 })) : [];
+    .map(a => ({ id: a.id, s: a.s, dt: Number.isInteger(a.dt) ? Math.min(a.dt, 600000) : null, b: a.b ? 1 : 0,
+      // raw + label : de quoi ré-afficher les réponses signature sur /r/{token}
+      raw: Number.isInteger(a.raw) && a.raw >= 0 && a.raw <= 100 ? a.raw : null,
+      label: typeof a.label === "string" ? a.label.slice(0, 160) : null })) : [];
   const q = b.qual && typeof b.qual === "object" ? b.qual : {};
   const qual = {};
   for (const k in QUAL_OK) if (QUAL_OK[k].includes(q[k])) qual[k] = q[k];
@@ -51,12 +54,10 @@ export default async function handler(req, res) {
   try {
     const pid = b.result_id && UUID.test(b.result_id) ? b.result_id : null;
     const id = await rpc("cc_save_result", { p: row, p_id: pid });
-    if (pid && id === pid) {
-      // mise à jour (passage Express → Complet) : on recalcule le scoring du lead lié
-      const result = await rpc("cc_get_result", { p_id: id });
-      if (result && result.lead) await rpc("cc_update_lead_by_result", { p_result_id: id, p: leadFields(result, result.lead) });
-    }
-    return json(res, 200, { result_id: id });
+    const result = await rpc("cc_get_result", { p_id: id });
+    // mise à jour (passage Express → Complet) : on recalcule le scoring du lead lié
+    if (pid && id === pid && result && result.lead) await rpc("cc_update_lead_by_result", { p_result_id: id, p: leadFields(result, result.lead) });
+    return json(res, 200, { result_id: id, report_token: result ? result.report_token || null : null });
   } catch (e) {
     console.error("submit", e.status, e.message);
     return json(res, 500, { error: "db_error" });

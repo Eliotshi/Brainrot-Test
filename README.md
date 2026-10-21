@@ -62,4 +62,8 @@ Safeguards:
 - **Send caps** (`cc_claim_email`, migration `20261020020000_email.sql`): 1 email every 3 minutes and 5 per 24 h per address, and 450 per 24 h in total, to stay under Gmail's limit and stop the form being used to spam strangers.
 - **One-click unsubscribe** for the marketing version: a signed link (`lib/unsubscribe.js`, `api/unsubscribe.js`) plus `List-Unsubscribe` / `List-Unsubscribe-Post` headers. It turns `consent_marketing` off. "STOP" replies can be handled from the lead drawer in `/admin` ("Retirer").
 
+Permanent link: every result gets a random `report_token` (24 characters). `/r/{token}` re-opens the report from the database (`api/report.js`, function `cc_get_report`, which never returns the email or the qualification answers). The email's "Revoir mon rapport" button and the "Ton rapport est sauvegardé" block in the report both use it.
+
+Provider: `EMAIL_PROVIDER=gmail` (default) for the transactional report email; `resend` or `brevo` (with `EMAIL_API_KEY` and `EMAIL_FROM`) for bulk sending such as the 21-day plan, whose drafts are in `emails/plan21/` (not automated).
+
 Setup: turn on 2-step verification on the Gmail account, create an app password at myaccount.google.com/apppasswords, then add `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `MAIL_FROM_NAME` and `SITE_URL` to the Vercel environment variables. Without `GMAIL_USER` and `GMAIL_APP_PASSWORD`, no email is sent. Gmail caps sending at about 500 emails a day; switch to a dedicated provider (Brevo, Resend) beyond that.

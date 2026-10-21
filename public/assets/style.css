@@ -500,3 +500,10 @@ details.method div{color:var(--muted);font-size:.92rem;margin-top:10px;display:g
 .legal-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.92rem}
 .legal-table th,.legal-table td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--muted)}
 .legal-table th{color:var(--fg);font-family:var(--f-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase}
+
+/* ---------- lien privé du rapport (lot 4) ---------- */
+.mylink{display:grid;gap:8px;padding:16px;border-radius:var(--r);background:var(--ink2);border:1px solid var(--line)}
+.mylink .k{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--good)}
+.mylink code{font-family:var(--f-mono);font-size:.82rem;color:var(--fg);word-break:break-all}
+.mylink .s{font-size:.82rem;color:var(--muted)}
+.mylink .btn{justify-self:start}
