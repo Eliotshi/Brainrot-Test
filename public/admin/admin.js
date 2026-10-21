@@ -87,8 +87,19 @@ function render() {
   const fmax = Math.max(1, f.results);
   $("#funnel").innerHTML = fsteps.map(([k, n]) => `<div class="fn"><span>${k}</span><span class="tr"><i style="width:${n / fmax * 100}%"></i></span><span class="n">${n}</span></div>`).join("");
 
+  renderDaily(DATA.daily || []);
   renderTable(rows);
   $("#count").textContent = `${rows.length} / ${all.length} leads`;
+}
+
+/* ---------- funnel par jour (lot 1) ---------- */
+const DCOLS = [["day", "Jour"], ["variant", "Var."], ["starts", "Start"], ["q5", "Q5"], ["q10", "Q10"], ["q20", "Q20"], ["completes", "Fini"],
+  ["email_views", "Gate vu"], ["email_submits", "E-mail"], ["optins", "Opt-in"], ["shares", "Partage"], ["invite_clicks", "Invit. clic"], ["invite_starts", "Invités"]];
+function renderDaily(rows) {
+  $("#daily thead").innerHTML = "<tr>" + DCOLS.map(([, l]) => `<th style="cursor:default">${l}</th>`).join("") + "</tr>";
+  $("#daily tbody").innerHTML = rows.length
+    ? rows.map(r => "<tr style=\"cursor:default\">" + DCOLS.map(([k]) => `<td class="${k === "day" || k === "variant" ? "mono" : "num"}">${esc(k === "day" ? new Date(r[k]).toLocaleDateString("fr-FR") : r[k] ?? 0)}</td>`).join("") + "</tr>").join("")
+    : `<tr><td colspan="${DCOLS.length}" class="empty">Pas encore d'événements (ou migration du lot 1 non appliquée).</td></tr>`;
 }
 
 /* ---------- scatter matrix ---------- */

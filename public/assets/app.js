@@ -148,6 +148,19 @@ const API = {
   },
 };
 let LIVE = null;
+
+/* ---------- tracking first-party (lot 1) : sendBeacon vers /api/track, sans cookie ---------- */
+const SID = (() => {
+  const make = () => (crypto.randomUUID ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)));
+  try { let v = sessionStorage.getItem("cc_sid"); if (!v) { v = make(); sessionStorage.setItem("cc_sid", v); } return v; } catch { return make(); }
+})();
+let AB = null; // variante du gate (lot 7)
+function T(type, extra = {}) {
+  const ev = { session_id: SID, result_id: S.resultId || null, type, variant: AB, ...extra };
+  const body = JSON.stringify(ev);
+  try { if (navigator.sendBeacon && navigator.sendBeacon("/api/track", new Blob([body], { type: "application/json" }))) return; } catch {}
+  fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+}
 API.stats().then(d => { LIVE = d; landCount(); });
 
 /* ---------- screens ---------- */
@@ -248,6 +261,7 @@ $("#btn-start").addEventListener("click", () => {
   S.target = S.mode === "complet" ? 50 : 20;
   S.answers = []; S.xp = 0; S.combo = 0; S.badges = []; S.qual = {}; S.qualIdx = -1; S.started = Date.now();
   S.resultId = null; S.unlocked = false; S.extended = false; S.events = new Set();
+  T("start", { props: { profile: S.profile, age: S.age, mode: S.mode } });
   updateHUD(); show("quiz");
   nextQuestion();
 });
@@ -419,6 +433,7 @@ function answer(raw, label, ev) {
   const gain = 10 * mult + (S.curBonus ? 15 : 0);
   S.xp += gain;
   S.answers.push({ id: q.id, ax: q.ax, s: Math.round(s * 100) / 100, raw, lvl: q.lvl, label, bonus: S.curBonus, dt: Math.round(dt), gain });
+  T("question_n", { n: S.answers.length, question_id: q.id });
   const after = tempOf(runningScore()), delta = after - before;
 
   // feedback
@@ -563,7 +578,8 @@ async function finish() {
     "Rédaction de ton plan sur 21 jours",
   ];
   const ul = $("#cook-steps"); ul.replaceChildren(...steps.map(s => el("li", {}, el("span", { class: "b" }), s)));
-  const save = API.post("/api/submit", payload(R)).then(d => { if (d && d.result_id) S.resultId = d.result_id; });
+  const save = API.post("/api/submit", payload(R)).then(d => { if (d && d.result_id) S.resultId = d.result_id; })
+    .finally(() => T("complete", { n: S.answers.length, props: { mode: S.extended ? "complet+" : S.mode } }));
   const ring = $("#ring"), val = $("#cook-v"), total = 4200, t0 = performance.now();
   await new Promise(res => {
     const step = now => {
@@ -614,6 +630,7 @@ function renderGate(R) {
   const scramble = v => String(v).replace(/[A-Za-zÀ-ÿ]/g, () => "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]).replace(/[0-9]/g, () => Math.floor(Math.random() * 10));
   $("#gate-locked").replaceChildren(...locked.map(([k, v]) => el("li", {}, el("span", { html: icon("lock") }), el("span", {}, k), el("span", { class: "blur-soft", "aria-hidden": "true" }, scramble(v)))));
   show("gate");
+  T("email_view", { props: { where: "end" } });
   setTimeout(() => { $("#gate-mark").style.left = R.overall + "%"; }, 120);
   $("#gate-mark").style.transition = "left 1.4s cubic-bezier(.2,.8,.2,1)";
   S._R = R;
@@ -633,6 +650,8 @@ $("#lead-form").addEventListener("submit", async e => {
   // make sure the result row exists before linking the lead
   if (!S.resultId) { const d = await API.post("/api/submit", payload(R)); if (d && d.result_id) S.resultId = d.result_id; }
   API.post("/api/lead", { result_id: S.resultId, first_name: name, email, consent_marketing: $("#f-mkt").checked, company: $("#f-company").value, utm });
+  T("email_submit", { props: { where: "end" } });
+  if (S.mkt) T("optin", { props: { purpose: "newsletter" } });
   renderReport(R); show("result"); FX.confetti(180); Snd.badge();
   btn.disabled = false;
 });

@@ -350,13 +350,13 @@ function renderReport(R) {
   const shareTxt = `J'ai fait le test « Ton cerveau est-il cramé par l'IA ? » : ${L.name.toUpperCase()}, ${fr1(R.temp)} °C à cœur. Archétype : ${A.name}. Et toi, tu en es où ? → ${TEST_URL}`;
   const defiTxt = `Je te défie : mon cerveau est à ${fr1(R.temp)} °C (${L.name}). Tu fais mieux ? Test adaptatif, 4 minutes, sans tricher avec l'IA → ${TEST_URL}`;
   $("#share-text").textContent = shareTxt;
-  const copy = async (txt, btn) => {
-    track("share");
+  const copy = async (txt, btn, channel) => {
+    track("share"); T("share", { props: { channel } });
     try { await navigator.clipboard.writeText(txt); const o = btn.innerHTML; btn.textContent = "Copié !"; setTimeout(() => { btn.innerHTML = o; }, 1500); }
     catch { const r = document.createRange(); r.selectNodeContents($("#share-text")); getSelection().removeAllRanges(); getSelection().addRange(r); }
   };
-  $("#btn-copy").addEventListener("click", e => copy(shareTxt, e.currentTarget));
-  $("#btn-defi").addEventListener("click", e => copy(defiTxt, e.currentTarget));
+  $("#btn-copy").addEventListener("click", e => copy(shareTxt, e.currentTarget, "copy"));
+  $("#btn-defi").addEventListener("click", e => copy(defiTxt, e.currentTarget, "defi"));
   $("#btn-dl").addEventListener("click", () => downloadCard(R));
   $("#btn-restart").addEventListener("click", () => location.reload());
   $("#btn-extend")?.addEventListener("click", extendRun);
@@ -396,6 +396,7 @@ async function downloadCard(R) {
   const cv = $("#share-cv"); drawShareCard(cv, R);
   const blob = await new Promise(r => cv.toBlob(r, "image/png"));
   const file = new File([blob], "cerveau-crame.png", { type: "image/png" });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: "Cerveau Cramé" }); return; } catch {} }
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: "Cerveau Cramé" }); T("share", { props: { channel: "native" } }); return; } catch {} }
+  T("share", { props: { channel: "download" } });
   const a = el("a", { href: URL.createObjectURL(blob), download: "cerveau-crame.png" }); document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }

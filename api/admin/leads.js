@@ -23,8 +23,11 @@ export default async function handler(req, res) {
   if (!authorized(req)) { await new Promise(r => setTimeout(r, 400)); return json(res, 401, { error: "unauthorized" }); }
   try {
     if (req.method === "GET") {
-      const data = await rpc("cc_admin_list", { p_token: token });
-      return json(res, 200, { leads: data.leads, funnel: { ...data.funnel, leads: data.leads.length } });
+      const [data, daily] = await Promise.all([
+        rpc("cc_admin_list", { p_token: token }),
+        rpc("cc_admin_funnel", { p_token: token }).catch(() => []), // absent tant que la migration du lot 1 n'est pas appliquée
+      ]);
+      return json(res, 200, { leads: data.leads, funnel: { ...data.funnel, leads: data.leads.length }, daily });
     }
     if (req.method === "PATCH") {
       const b = body(req);
