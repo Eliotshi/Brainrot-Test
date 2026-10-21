@@ -161,7 +161,7 @@ function T(type, extra = {}) {
   try { if (navigator.sendBeacon && navigator.sendBeacon("/api/track", new Blob([body], { type: "application/json" }))) return; } catch {}
   fetch("/api/track", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
 }
-API.stats().then(d => { LIVE = d; landCount(); });
+const statsReady = API.stats().then(d => { LIVE = d; landCount(); });
 
 /* ---------- screens ---------- */
 const screens = ["land", "setup", "quiz", "cook", "gate", "result"];
@@ -579,7 +579,7 @@ async function finish() {
     "Rédaction de ton plan sur 21 jours",
   ];
   const ul = $("#cook-steps"); ul.replaceChildren(...steps.map(s => el("li", {}, el("span", { class: "b" }), s)));
-  const save = API.post("/api/submit", payload(R)).then(d => { if (d && d.result_id) S.resultId = d.result_id; })
+  const save = API.post("/api/submit", payload(R)).then(d => { if (d && d.result_id) { S.resultId = d.result_id; S.reportToken = d.report_token || S.reportToken; } })
     .finally(() => T("complete", { n: S.answers.length, props: { mode: S.extended ? "complet+" : S.mode } }));
   const ring = $("#ring"), val = $("#cook-v"), total = 4200, t0 = performance.now();
   await new Promise(res => {
@@ -606,7 +606,7 @@ function payload(R) {
     n_questions: S.answers.length,
     overall: Math.round(R.overall * 10) / 10, temp: Math.round(R.temp * 10) / 10,
     level: R.level.name, archetype: R.archKey, scores: R.scores,
-    answers: S.answers.map(a => ({ id: a.id, s: a.s, dt: a.dt, b: a.bonus ? 1 : 0 })),
+    answers: S.answers.map(a => ({ id: a.id, s: a.s, dt: a.dt, b: a.bonus ? 1 : 0, raw: Number.isInteger(a.raw) ? a.raw : null, label: String(a.label || "").slice(0, 160) })),
     qual: S.qual, badges: S.badges, xp: S.xp,
     duration_s: Math.round((Date.now() - S.started) / 1000), utm,
   };
@@ -620,7 +620,7 @@ function renderGate(R) {
   $("#gate-prec").textContent = `Diagnostic ${S.target >= 50 ? "complet" : "express"} · ${S.answers.length} questions`;
   // aucune promesse d'envoi tant que l'e-mail n'est pas configuré côté serveur
   const mailOn = !!(LIVE && LIVE.mail_enabled);
-  $("#gate-copy").textContent = mailOn ? " On t'en envoie aussi une copie pour la garder." : "";
+  $("#gate-copy").textContent = mailOn ? " On t'envoie aussi le lien de ton rapport pour le retrouver." : "";
   $("#gate-fine").textContent = mailOn ? "Ton e-mail sert à t'envoyer ton rapport. Jamais revendu." : "Ton e-mail n'est jamais revendu.";
   const locked = [
     ["Ton archétype parmi 12", R.arch.name],
@@ -654,7 +654,7 @@ $("#lead-form").addEventListener("submit", async e => {
   S.name = name; S.email = email; S.unlocked = true; S.mkt = $("#f-mkt").checked;
   const R = S._R;
   // make sure the result row exists before linking the lead
-  if (!S.resultId) { const d = await API.post("/api/submit", payload(R)); if (d && d.result_id) S.resultId = d.result_id; }
+  if (!S.resultId) { const d = await API.post("/api/submit", payload(R)); if (d && d.result_id) { S.resultId = d.result_id; S.reportToken = d.report_token || null; } }
   API.post("/api/lead", { result_id: S.resultId, first_name: name, email, consent_marketing: $("#f-mkt").checked, consents: { report: true, newsletter: $("#f-mkt").checked }, consent_version: CONSENT_TEXTS.version, source: "gate", company: $("#f-company").value, utm });
   T("email_submit", { props: { where: "end" } });
   if (S.mkt) T("optin", { props: { purpose: "newsletter" } });
@@ -680,6 +680,30 @@ function extendRun() {
     el("button", { class: "btn btn-hot btn-big", onclick: e => { e.target.closest(".overlay").remove(); nextQuestion(); } }, `Chapitre ${done + 1} · ${CHAPTERS[done]}`, el("span", { "data-icon": "arrow" }))));
 }
 
+/* ---------- rapport sauvegardé : /r/{token} ---------- */
+function labelFor(q, a) {
+  if (q.t === "s") return Number.isInteger(a.raw) ? a.raw + " %" : Math.round(a.s / 3 * 100) + " %";
+  const opts = q.a || [];
+  const i = Number.isInteger(a.raw) ? a.raw : q.t === "b" ? (q.sc || []).indexOf(a.s) : q.t === "t" ? Math.round(a.s / .75) : Math.round(a.s * (opts.length - 1) / 3);
+  return opts[i] ?? "";
+}
+async function openSavedReport(token) {
+  show("result");
+  $("#res").innerHTML = `<section class="rsec" style="border:0"><p class="eyebrow">Chargement de ton rapport…</p></section>`;
+  let d = null;
+  try { const r = await fetch("/api/report?token=" + encodeURIComponent(token)); if (r.ok) d = await r.json(); } catch {}
+  if (!d) {
+    $("#res").innerHTML = `<section class="rsec" style="border:0"><h1 style="font-size:2rem">Rapport introuvable</h1><p style="color:var(--muted);margin-top:10px">Ce lien est incomplet ou ne correspond à aucun rapport. Vérifie que tu as copié le lien en entier.</p><a class="btn btn-hot" href="/" style="margin-top:20px">Faire le test</a></section>`;
+    return;
+  }
+  S.profile = d.profile; S.age = d.age; S.extended = d.mode === "complet+";
+  S.mode = String(d.mode).startsWith("complet") ? "complet" : "express"; S.target = S.mode === "complet" ? 50 : 20;
+  S.answers = (d.answers || []).map(a => { const q = QM[a.id]; return q ? { id: a.id, ax: q.ax, s: a.s, raw: a.raw, lvl: q.lvl, label: a.label || labelFor(q, a), bonus: !!a.b, dt: a.dt || 0, gain: 0 } : null; }).filter(Boolean);
+  S.badges = d.badges || []; S.xp = d.xp || 0; S.unlocked = true; S.resultId = d.id; S.reportToken = token; S.savedView = true;
+  await statsReady;
+  renderReport(computeReport());
+}
+
 /* ---------- sound toggle ---------- */
 function soundBtn() { const b = $("#btn-sound"); b.innerHTML = icon(Snd.on ? "sound" : "mute"); b.setAttribute("aria-label", Snd.on ? "Couper le son" : "Activer le son"); }
 $("#btn-sound").addEventListener("click", () => { Snd.on = !Snd.on; store.set("cc_sound", Snd.on); soundBtn(); if (Snd.on) Snd.tick(); });
@@ -687,6 +711,8 @@ $("#btn-sound").addEventListener("click", () => { Snd.on = !Snd.on; store.set("c
 /* ---------- boot ---------- */
 addEventListener("DOMContentLoaded", () => {
   $("#f-mkt-label").textContent = CONSENT_TEXTS.newsletter;
-  hydrateIcons(); soundBtn(); renderLanding(); show("land");
+  hydrateIcons(); soundBtn(); renderLanding();
+  const saved = location.pathname.match(/^\/r\/([A-Za-z0-9_-]{22,40})\/?$/);
+  if (saved) openSavedReport(saved[1]); else show("land");
   $("#btn-restart-top").addEventListener("click", () => location.reload());
 });

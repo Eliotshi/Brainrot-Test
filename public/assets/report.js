@@ -122,7 +122,8 @@ function renderReport(R) {
   const sig = R.signature.map(a => ({ a, q: QM[a.id] }));
   const cr = R.crudest, crq = QM[cr.id];
   const plan = R.top.map(k => AX[k]);
-  const isExpress = S.target < 50;
+  const isExpress = S.target < 50 && !S.savedView;
+  const myLink = S.reportToken ? `${location.origin}/r/${S.reportToken}` : null;
   const ref = G ? G.means : null, ref2 = R.O ? R.O.means : null;
   const cmpBars = [["Toi", R.overall, true], [`${PROFILES_PL[S.profile]} ${AGE_LABELS[S.age] || S.age}`, G?.overall], [PROFILES_PL.etu, refProfile("etu")?.overall], [PROFILES_PL.pro, refProfile("pro")?.overall], ["Tout le monde", R.ALL?.overall]].filter(([, v]) => v != null);
 
@@ -292,7 +293,8 @@ function renderReport(R) {
           <button class="btn btn-ghost" id="btn-defi">${icon("bolt")} Copier un défi</button>
         </div>
         ${isExpress ? `<div class="upgrade"><div><h3>Ton diagnostic express repose sur ${S.answers.length} questions</h3><p>Passe en mode complet : 30 questions de plus, tes réponses sont gardées, chaque axe est mesuré au moins 5 fois, et le badge Marathon t'attend.</p></div><button class="btn btn-hot" id="btn-extend">Affiner mon diagnostic</button></div>` : ""}
-        <button class="btn btn-ghost" id="btn-restart">${icon("refresh")} Refaire le test</button>
+        ${myLink ? `<div class="mylink"><span class="k">Ton rapport est sauvegardé</span><code id="my-link">${esc(myLink)}</code><span class="s">Lien privé : il affiche tes réponses. Garde-le pour comparer dans 3 mois.</span><button class="btn btn-ghost" id="btn-mylink">${icon("copy")} Copier mon lien</button></div>` : ""}
+        <button class="btn btn-ghost" id="btn-restart">${icon("refresh")} ${S.savedView ? "Faire le test" : "Refaire le test"}</button>
       </div>
     </div>
     <details class="method">
@@ -348,7 +350,12 @@ function renderReport(R) {
   $("#btn-copy").addEventListener("click", e => copy(shareTxt, e.currentTarget, "copy"));
   $("#btn-defi").addEventListener("click", e => copy(defiTxt, e.currentTarget, "defi"));
   $("#btn-dl").addEventListener("click", () => downloadCard(R));
-  $("#btn-restart").addEventListener("click", () => location.reload());
+  $("#btn-restart").addEventListener("click", () => { if (S.savedView) location.href = "/"; else location.reload(); });
+  $("#btn-mylink")?.addEventListener("click", async e => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText(myLink); const o = b.innerHTML; b.textContent = "Lien copié !"; setTimeout(() => { b.innerHTML = o; }, 1500); }
+    catch { const r = document.createRange(); r.selectNodeContents($("#my-link")); getSelection().removeAllRanges(); getSelection().addRange(r); }
+  });
   $("#btn-extend")?.addEventListener("click", extendRun);
   $("#btn-invite3")?.addEventListener("click", () => { $("#btn-defi").click(); $("#btn-defi").scrollIntoView({ behavior: "smooth", block: "center" }); });
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => drawShareCard($("#share-cv"), R));

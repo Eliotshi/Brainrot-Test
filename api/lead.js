@@ -49,7 +49,9 @@ export default async function handler(req, res) {
         const leadId = await rpc("cc_claim_email", { p_email: email });
         if (leadId) {
           const unsub = consent_marketing ? unsubscribeUrl(leadId) : null;
-          const mail = buildResultEmail({ firstName: first_name, result, consentMarketing: consent_marketing, unsubscribeUrl: unsub });
+          const site = (process.env.SITE_URL || "").replace(/\/$/, "");
+          const reportUrl = site && result.report_token ? `${site}/r/${result.report_token}` : null;
+          const mail = buildResultEmail({ firstName: first_name, result, consentMarketing: consent_marketing, unsubscribeUrl: unsub, reportUrl });
           await sendMail({ to: email, ...mail, unsubscribeUrl: unsub });
         }
       } catch (e) { console.error("mail", e.message); }
