@@ -6,18 +6,13 @@
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const AXK = AXES.map(a => a.k);
 
-/* ---------- reference groups: real players when n ≥ 50, modelled panel otherwise ---------- */
+/* ---------- reference groups: real players only (n ≥ 50), never a modelled panel ---------- */
 const MIN_LIVE = 50;
-function modelRef(profiles, ages) {
-  const means = {};
-  for (const k of AXK) means[k] = avg(profiles.flatMap(p => ages.map(a => clamp(PANEL.base[p][k] + PANEL.age[a], 0, 100))));
-  const sds = Object.fromEntries(AXK.map(k => [k, PANEL.sd]));
-  return { means, sds, overall: avg(AXK.map(k => means[k])), overall_sd: 14, n: 0, live: false };
-}
-function liveOr(g, fallback) { return g && g.n >= MIN_LIVE ? { ...g, live: true } : fallback; }
-const refGroup = (p, a) => liveOr(LIVE?.groups?.[p + "|" + a], modelRef([p], [a]));
-const refProfile = p => liveOr(LIVE?.profiles?.[p], modelRef([p], AGES));
-const refAll = () => liveOr(LIVE?.all, modelRef(["etu", "pro"], AGES));
+const liveRef = g => (g && g.n >= MIN_LIVE ? g : null);
+const refGroup = (p, a) => liveRef(LIVE?.groups?.[p + "|" + a]);
+const refProfile = p => liveRef(LIVE?.profiles?.[p]);
+const refAll = () => liveRef(LIVE?.all);
+const groupCount = (p, a) => (LIVE ? LIVE.groups?.[p + "|" + a]?.n || 0 : null);
 const pct = (x, m, sd) => clamp(Math.round(Phi((x - m) / Math.max(sd, 4)) * 100), 1, 99);
 
 /* ---------- archetype ---------- */
@@ -25,29 +20,16 @@ function archetypeOf(sc) {
   const v = AXK.map(k => sc[k]), o = avg(v), mx = Math.max(...v), mn = Math.min(...v);
   if (o < 22 && mx < 45) return "bleu";
   if (o >= 78) return "carbo";
-  if (mx - mn < 16) return "equi";
+  if (mx - mn < 16 && o >= 25 && o <= 65) return "equi";
   const prod = avg([sc.plume, sc.pensee, sc.memoire, sc.attention]), hum = avg([sc.coeur, sc.perroquet, sc.boussole]);
   if (prod >= 58 && hum <= 35) return "cyborg";
   return AXK.reduce((b, k) => sc[k] > sc[b] ? k : b, AXK[0]);
 }
 
-/* rarity: real distribution once 200+ players, otherwise a seeded simulation of the panel */
-let _sim = null;
+/* rarity: only from the real distribution (200+ players), otherwise nothing is shown */
 function rarity(key) {
   const arc = LIVE?.archetypes, tot = arc ? Object.values(arc).reduce((s, x) => s + x, 0) : 0;
-  if (tot >= 200) return { pct: Math.max(1, Math.round((arc[key] || 0) / tot * 100)), live: true };
-  if (!_sim) {
-    let a = 0x9e3779b9; const rnd = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-    const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(2 * Math.PI * rnd());
-    _sim = {}; const N = 6000;
-    for (let i = 0; i < N; i++) {
-      const p = rnd() < .5 ? "etu" : "pro", ag = AGES[Math.floor(rnd() * 4)], g = gauss(), sc = {};
-      for (const k of AXK) sc[k] = clamp(PANEL.base[p][k] + PANEL.age[ag] + PANEL.sd * (.65 * g + .76 * gauss()), 0, 100);
-      const ar = archetypeOf(sc); _sim[ar] = (_sim[ar] || 0) + 1;
-    }
-    for (const k in _sim) _sim[k] = _sim[k] / N * 100;
-  }
-  return { pct: Math.max(1, Math.round(_sim[key] || 1)), live: false };
+  return tot >= 200 ? Math.max(1, Math.round((arc[key] || 0) / tot * 100)) : null;
 }
 
 /* ---------- compute everything ---------- */
@@ -57,9 +39,9 @@ function computeReport() {
   const overall = avg(AXK.map(k => scores[k]));
   const level = levelOf(overall), temp = tempOf(overall);
   const archKey = archetypeOf(scores), arch = ARCHETYPES[archKey];
-  const G = refGroup(S.profile, S.age), P = refProfile(S.profile), ALL = refAll();
+  const G = refGroup(S.profile, S.age), ALL = refAll();
   const other = S.profile === "etu" ? "pro" : "etu", O = refProfile(other);
-  const axPct = Object.fromEntries(AXK.map(k => [k, pct(scores[k], G.means[k], G.sds[k])]));
+  const axPct = G ? Object.fromEntries(AXK.map(k => [k, pct(scores[k], G.means[k], G.sds[k])])) : null;
   const N = S.answers.length;
   const hours = 96 * Math.pow(1 - overall / 100, 1.8);
   const h = Math.floor(hours), m = Math.round((hours - h) * 60);
@@ -67,9 +49,11 @@ function computeReport() {
   const hot = S.answers.slice().sort((a, b) => b.s - a.s || b.lvl - a.lvl);
   const cold = S.answers.slice().sort((a, b) => a.s - b.s || b.lvl - a.lvl);
   return {
-    scores, conf, overall, level, temp, archKey, arch, G, P, ALL, O, other, axPct,
-    pctGroup: pct(overall, G.overall, G.overall_sd), pctAll: pct(overall, ALL.overall, ALL.overall_sd), pctOther: pct(overall, O.overall, O.overall_sd),
-    precision: Math.round(50 + 45 * (1 - Math.exp(-N / 22))),
+    scores, conf, overall, level, temp, archKey, arch, G, ALL, O, other, axPct,
+    groupN: groupCount(S.profile, S.age),
+    pctGroup: G ? pct(overall, G.overall, G.overall_sd) : null,
+    pctAll: ALL ? pct(overall, ALL.overall, ALL.overall_sd) : null,
+    pctOther: O ? pct(overall, O.overall, O.overall_sd) : null,
     autonomy: `${h} h ${String(m).padStart(2, "0")}`, autonomyH: hours,
     braise: Math.round(S.answers.filter(a => a.s >= 2).length / Math.max(1, N) * 100),
     nBonus: S.answers.filter(a => a.bonus).length,
@@ -127,18 +111,19 @@ function bellSVG(me, m, sd) {
 /* ---------- render ---------- */
 function bandOf(v) { return v < 34 ? 0 : v < 67 ? 1 : 2; }
 const BANDN = ["Cru", "Tiède", "Brûlant"];
-function confDots(n) { const k = n >= 6 ? 4 : n >= 4 ? 3 : n >= 2 ? 2 : 1; return `<span class="conf" title="Précision : ${n} réponse${n > 1 ? "s" : ""}">${[1, 2, 3, 4].map(i => `<i class="${i <= k ? "on" : ""}"></i>`).join("")}</span>`; }
+function confDots(n) { const k = n >= 6 ? 4 : n >= 4 ? 3 : n >= 2 ? 2 : 1; return `<span class="conf" title="${n} réponse${n > 1 ? "s" : ""} sur cet axe">${[1, 2, 3, 4].map(i => `<i class="${i <= k ? "on" : ""}"></i>`).join("")}</span>`; }
 
 function renderReport(R) {
   const name = S.name ? esc(S.name) : "Toi";
-  const L = R.level, A = R.arch, src = R.G.live ? `${R.G.n.toLocaleString("fr-FR")} vrais joueurs` : "panel de référence modélisé";
+  const L = R.level, A = R.arch, G = R.G;
   const grpLbl = `${PROFILES_PL[S.profile]} de ${S.age} ans`;
   const al = ARCHETYPES[A.ally], cl = ARCHETYPES[A.clash];
   const sig = R.signature.map(a => ({ a, q: QM[a.id] }));
   const cr = R.crudest, crq = QM[cr.id];
   const plan = R.top.map(k => AX[k]);
   const isExpress = S.target < 50;
-  const ref = R.G.means, ref2 = R.O.means;
+  const ref = G ? G.means : null, ref2 = R.O ? R.O.means : null;
+  const cmpBars = [["Toi", R.overall, true], [`${PROFILES_PL[S.profile]} ${S.age}`, G?.overall], [PROFILES_PL.etu, refProfile("etu")?.overall], [PROFILES_PL.pro, refProfile("pro")?.overall], ["Tout le monde", R.ALL?.overall]].filter(([, v]) => v != null);
 
   $("#res").innerHTML = `
   <section class="res-hero">
@@ -148,17 +133,16 @@ function renderReport(R) {
       <p class="lvtag">${esc(L.tag)}</p>
       <p class="lvtext">${esc(L.text)}</p>
       <div class="res-chips">
-        <span class="chip">${icon("radar")} Précision ${R.precision} %</span>
-        <span class="chip">${icon("thermo")} ${S.answers.length} réponses · mode ${S.target >= 50 ? "complet" : "express"}</span>
+        <span class="chip">${icon("radar")} Diagnostic ${S.target >= 50 ? "complet" : "express"} · ${S.answers.length} questions</span>
         <span class="chip">${icon("bolt")} ${S.xp} XP</span>
       </div>
     </div>
     <div class="gauge">
       <span class="eyebrow">Température à cœur</span>
       <div class="bigtemp mono" style="color:${heatCSS(R.overall / 100)};margin-top:8px" id="r-temp">0,0 °C</div>
-      <div class="gauge-bar"><span class="gauge-mark-grp" style="left:${R.G.overall}%" title="Moyenne de ton groupe"></span><span class="gauge-mark" id="r-mark" style="left:0"></span></div>
+      <div class="gauge-bar">${G ? `<span class="gauge-mark-grp" style="left:${G.overall}%" title="Moyenne de ton groupe"></span>` : ""}<span class="gauge-mark" id="r-mark" style="left:0"></span></div>
       <div class="gauge-lbls">${LEVELS.map(l => `<span class="${l === L ? "on" : ""}">${l.name}</span>`).join("")}</div>
-      <p class="gauge-note">Le trait fin marque la moyenne des ${esc(grpLbl)} (${Math.round(tempOf(R.G.overall))} °C).</p>
+      ${G ? `<p class="gauge-note">Le trait fin marque la moyenne des ${esc(grpLbl)} (${Math.round(tempOf(G.overall))} °C, ${G.n.toLocaleString("fr-FR")} joueurs).</p>` : ""}
     </div>
   </section>
 
@@ -171,7 +155,7 @@ function renderReport(R) {
         <p class="tagl">${esc(A.tag)}</p>
         <p class="desc">${esc(A.desc)}</p>
         <div class="arch-meta">
-          <span class="chip">${icon("eye")} ${R.rarity.pct} % ${R.rarity.live ? "des joueurs" : "du panel"} ont ce profil</span>
+          ${R.rarity != null ? `<span class="chip">${icon("eye")} ${R.rarity} % des joueurs ont ce profil</span>` : ""}
           <span class="chip">Référence : ${esc(A.ref)}</span>
         </div>
       </div>
@@ -183,13 +167,13 @@ function renderReport(R) {
   </section>
 
   <section class="rsec">
-    <div class="rsec-head"><div><p class="eyebrow">Carte thermique</p><h2 style="margin-top:8px">Tes 8 axes de cuisson</h2><p>Touche un axe pour voir le détail. Compare ta forme à celle des autres.</p></div></div>
+    <div class="rsec-head"><div><p class="eyebrow">Carte thermique</p><h2 style="margin-top:8px">Tes 8 axes de cuisson</h2><p>Touche un axe pour voir le détail.${ref || ref2 ? " Compare ta forme à celle des autres." : ""}</p></div></div>
     <div class="radar-wrap">
       <div class="radar-box">
-        <div class="toggles" id="r-tg">
-          <button class="tg" data-tg="ref" aria-pressed="true"><i style="background:#F2F0FF"></i>${esc(PROFILES_PL[S.profile])} ${esc(S.age)}</button>
-          <button class="tg" data-tg="ref2" aria-pressed="false"><i style="background:#8B3CFF"></i>${esc(PROFILES_PL[R.other])}</button>
-        </div>
+        ${ref || ref2 ? `<div class="toggles" id="r-tg">
+          ${ref ? `<button class="tg" data-tg="ref" aria-pressed="true"><i style="background:#F2F0FF"></i>${esc(PROFILES_PL[S.profile])} ${esc(S.age)}</button>` : ""}
+          ${ref2 ? `<button class="tg" data-tg="ref2" aria-pressed="false"><i style="background:#8B3CFF"></i>${esc(PROFILES_PL[R.other])}</button>` : ""}
+        </div>` : ""}
         <div id="r-radar"></div>
       </div>
       <div class="axis-detail" id="r-axis"></div>
@@ -197,46 +181,51 @@ function renderReport(R) {
   </section>
 
   <section class="rsec">
-    <div class="rsec-head"><div><p class="eyebrow">Détail par axe</p><h2 style="margin-top:8px">Où ça chauffe, où ça tient</h2><p>Le trait blanc marque la moyenne de ton groupe. Les points indiquent la précision de la mesure.</p></div></div>
+    <div class="rsec-head"><div><p class="eyebrow">Détail par axe</p><h2 style="margin-top:8px">Où ça chauffe, où ça tient</h2><p>${G ? "Le trait blanc marque la moyenne de ton groupe. " : ""}Les points indiquent le nombre de réponses sur l'axe.</p></div></div>
     <div class="axes-list">${AXK.slice().sort((a, b) => R.scores[b] - R.scores[a]).map(k => {
-      const v = R.scores[k], p = R.axPct[k];
+      const v = R.scores[k], p = R.axPct ? R.axPct[k] : null;
       return `<button class="axrow" aria-expanded="false" data-axr="${k}">
         <span class="nm">${esc(AX[k].name)}<small>${esc(AX[k].full)}</small></span>
-        <span class="axbar"><i style="--bw:${v ? 10000 / v : 100}%" data-w="${v}"></i><b style="left:${R.G.means[k]}%"></b></span>
+        <span class="axbar"><i style="--bw:${v ? 10000 / v : 100}%" data-w="${v}"></i>${G ? `<b style="left:${G.means[k]}%"></b>` : ""}</span>
         <span class="val" style="color:${heatCSS(v / 100)}">${v}</span>
-        <span class="sub"><span>${BANDN[bandOf(v)]} · plus cramé·e que ${p} % de ton groupe</span><span>Précision${confDots(R.conf[k])}</span></span>
+        <span class="sub"><span>${BANDN[bandOf(v)]}${p != null ? ` · plus cramé·e que ${p} % de ton groupe` : ""}</span><span>${R.conf[k]} rép.${confDots(R.conf[k])}</span></span>
         <span class="interp">${esc(AX[k].bands[bandOf(v)])}</span>
       </button>`;
     }).join("")}</div>
   </section>
 
   <section class="rsec">
-    <div class="rsec-head"><div><p class="eyebrow">Face aux autres</p><h2 style="margin-top:8px">Tu es plus cramé·e que…</h2></div></div>
-    <div class="cmp-grid">
+    <div class="rsec-head"><div><p class="eyebrow">Face aux autres</p><h2 style="margin-top:8px">${G ? "Tu es plus cramé·e que…" : "La comparaison arrive"}</h2></div></div>
+    ${G ? `<div class="cmp-grid">
       <div class="cmp-big">
         <div class="pc heat-text">${R.pctGroup} %</div>
         <p>des ${esc(grpLbl)}. ${R.pctGroup >= 50 ? `Tu fais partie des ${100 - R.pctGroup + 1} % les plus cuits de ton groupe.` : `Ton cerveau est plus cru que celui de ${100 - R.pctGroup} % de ton groupe.`}</p>
-        ${bellSVG(R.overall, R.G.overall, R.G.overall_sd)}
+        ${bellSVG(R.overall, G.overall, G.overall_sd)}
       </div>
       <div class="cmp-big">
         <span class="eyebrow">Score global sur 100</span>
         <div class="bars" style="margin-top:14px">
-          ${[["Toi", R.overall, true], [`${PROFILES_PL[S.profile]} ${S.age}`, R.G.overall], [PROFILES_PL.etu, refProfile("etu").overall], [PROFILES_PL.pro, refProfile("pro").overall], ["Tout le monde", R.ALL.overall]]
-            .map(([l, v, me]) => `<div class="brow ${me ? "me" : ""}"><span class="lb">${esc(l)}</span><span class="tr"><i data-w="${v}"></i></span><span class="v">${Math.round(v)}</span></div>`).join("")}
+          ${cmpBars.map(([l, v, me]) => `<div class="brow ${me ? "me" : ""}"><span class="lb">${esc(l)}</span><span class="tr"><i data-w="${v}"></i></span><span class="v">${Math.round(v)}</span></div>`).join("")}
         </div>
         <div class="pv-list" style="margin-top:20px">
-          <div class="row"><span>Plus cramé·e que l'ensemble des joueurs</span><b>${R.pctAll} %</b></div>
-          <div class="row"><span>Plus cramé·e que les ${esc(PROFILES_PL[R.other])}</span><b>${R.pctOther} %</b></div>
+          ${R.pctAll != null ? `<div class="row"><span>Plus cramé·e que l'ensemble des joueurs</span><b>${R.pctAll} %</b></div>` : ""}
+          ${R.pctOther != null ? `<div class="row"><span>Plus cramé·e que les ${esc(PROFILES_PL[R.other])}</span><b>${R.pctOther} %</b></div>` : ""}
         </div>
-        <p class="fineprint">Source : ${src}${R.G.live ? "" : ". Les vraies statistiques remplacent le panel dès 50 joueurs par groupe"}.</p>
+        <p class="fineprint">Source : ${G.n.toLocaleString("fr-FR")} vrais joueurs de ton groupe.</p>
       </div>
-    </div>
+    </div>` : `<div class="cmp-big cmp-lock">
+      <span class="eyebrow">Comparaison réelle</span>
+      ${R.groupN != null ? `<div class="pc mono">${R.groupN}/${MIN_LIVE}</div>` : ""}
+      <p>Comparaison réelle débloquée à ${MIN_LIVE} joueurs de ton groupe (${esc(grpLbl)})${R.groupN != null ? ` : ${R.groupN}/${MIN_LIVE}` : ""}. Invite 3 potes pour l'accélérer.</p>
+      ${R.groupN != null ? `<div class="lockbar"><i style="width:${Math.min(100, R.groupN / MIN_LIVE * 100)}%"></i></div>` : ""}
+      <button class="btn btn-hot" id="btn-invite3">${icon("bolt")} Inviter 3 potes</button>
+    </div>`}
   </section>
 
   <section class="rsec">
     <div class="rsec-head"><div><p class="eyebrow">Ton cerveau en chiffres</p></div></div>
     <div class="stats">
-      <div class="stat"><span class="k">Autonomie sans IA</span><span class="v mono">${R.autonomy}</span>
+      <div class="stat"><span class="k">Autonomie sans IA (estimation pour rire)</span><span class="v mono">${R.autonomy}</span>
         <div class="battery">${Array.from({ length: 10 }, (_, i) => `<span class="cell ${i < Math.round(R.autonomyH / 9.6) ? "on" : ""}"></span>`).join("")}<span class="cap"></span></div>
         <span class="s">avant le premier « je demande vite fait »</span></div>
       <div class="stat"><span class="k">Réponses côté braise</span><span class="v mono" style="color:${heatCSS(R.braise / 100)}">${R.braise} %</span><span class="s">de tes réponses sont chaudes ou brûlantes</span></div>
@@ -301,7 +290,7 @@ function renderReport(R) {
           <button class="btn btn-ghost" id="btn-copy">${icon("copy")} Copier le texte</button>
           <button class="btn btn-ghost" id="btn-defi">${icon("bolt")} Copier un défi</button>
         </div>
-        ${isExpress ? `<div class="upgrade"><div><h3>Ton diagnostic est précis à ${R.precision} %</h3><p>Passe en mode complet : 30 questions de plus, tes réponses sont gardées, précision ~90 % et badge Marathon.</p></div><button class="btn btn-hot" id="btn-extend">Affiner mon diagnostic</button></div>` : ""}
+        ${isExpress ? `<div class="upgrade"><div><h3>Ton diagnostic express repose sur ${S.answers.length} questions</h3><p>Passe en mode complet : 30 questions de plus, tes réponses sont gardées, chaque axe est mesuré au moins 5 fois, et le badge Marathon t'attend.</p></div><button class="btn btn-hot" id="btn-extend">Affiner mon diagnostic</button></div>` : ""}
         <button class="btn btn-ghost" id="btn-restart">${icon("refresh")} Refaire le test</button>
       </div>
     </div>
@@ -310,7 +299,7 @@ function renderReport(R) {
       <div>
         <p>Le test pioche dans une banque de 128 questions. Les 8 premières dépistent chaque axe. Ensuite, chaque réponse oriente la suivante : une réponse brûlante déclenche une question bonus sur le même sujet, et les axes les plus chauds reçoivent des questions plus exigeantes.</p>
         <p>Chaque réponse vaut de 0 (cru) à 3 (cramé). Un axe est la moyenne de ses réponses ramenée sur 100. La température est 42 °C + score global / 2.</p>
-        <p>Comparaisons : ${R.G.live ? `calculées sur ${R.G.n.toLocaleString("fr-FR")} vrais joueurs de ton groupe` : "panel de référence modélisé, remplacé par les vrais résultats dès 50 joueurs par groupe"}. Test humoristique, pas un diagnostic médical.</p>
+        <p>Comparaisons : ${G ? `calculées sur ${G.n.toLocaleString("fr-FR")} vrais joueurs de ton groupe` : `affichées seulement quand ton groupe compte au moins ${MIN_LIVE} vrais joueurs`}. Aucun chiffre n'est simulé. Test humoristique, pas un diagnostic médical.</p>
       </div>
     </details>
   </section>`;
@@ -323,7 +312,7 @@ function renderReport(R) {
   setTimeout(() => { $("#r-mark").style.left = R.overall + "%"; $$("#res [data-w]").forEach(i => i.style.width = i.dataset.w + "%"); }, 150);
 
   // radar + axis detail
-  const tg = { ref: true, ref2: false };
+  const tg = { ref: !!ref, ref2: false };
   let active = R.top[0];
   const drawRadar = () => {
     $("#r-radar").innerHTML = radarSVG({ me: R.scores, ref: tg.ref ? ref : null, ref2: tg.ref2 ? ref2 : null, size: 400, active });
@@ -333,7 +322,7 @@ function renderReport(R) {
     const k = active, v = R.scores[k], X = AX[k];
     $("#r-axis").innerHTML = `<span class="k">${esc(X.full)}</span><h3>${esc(X.name)}</h3><div class="sc mono" style="color:${heatCSS(v / 100)}">${v}<span style="font-size:1rem;color:var(--muted)">/100</span></div>
       <p>${esc(X.what)}</p><p style="color:var(--fg)">${esc(X.bands[bandOf(v)])}</p>
-      <p>Moyenne de ton groupe : <b style="color:var(--fg)">${Math.round(R.G.means[k])}</b> · plus cramé·e que <b style="color:var(--fg)">${R.axPct[k]} %</b> · ${R.conf[k]} réponse${R.conf[k] > 1 ? "s" : ""}</p>`;
+      <p>${G ? `Moyenne de ton groupe : <b style="color:var(--fg)">${Math.round(G.means[k])}</b> · plus cramé·e que <b style="color:var(--fg)">${R.axPct[k]} %</b> · ` : ""}${R.conf[k]} réponse${R.conf[k] > 1 ? "s" : ""} sur cet axe</p>`;
   };
   drawRadar(); drawAxis();
   $$("#r-tg .tg").forEach(b => b.addEventListener("click", () => { tg[b.dataset.tg] = !tg[b.dataset.tg]; b.setAttribute("aria-pressed", tg[b.dataset.tg]); drawRadar(); }));
@@ -343,7 +332,7 @@ function renderReport(R) {
   $("#btn-offer").addEventListener("click", () => {
     track("offer_click");
     if (CHECKOUT_URL) location.href = CHECKOUT_URL + (CHECKOUT_URL.includes("?") ? "&" : "?") + "client_reference_id=" + encodeURIComponent(S.resultId || "");
-    else $("#offer-note").textContent = S.mkt ? "Les inscriptions ouvrent très bientôt. Ton intérêt est noté : on te prévient en premier par e-mail." : "Les inscriptions ouvrent très bientôt. Coche l'option e-mail au prochain passage pour être prévenu·e en premier.";
+    else $("#offer-note").textContent = S.mkt ? "Les inscriptions ouvrent très bientôt. Ton intérêt est noté : on te prévient en premier." : "Les inscriptions ouvrent très bientôt. Coche l'option e-mail au prochain passage pour être prévenu·e en premier.";
   });
 
   // share
@@ -360,6 +349,7 @@ function renderReport(R) {
   $("#btn-dl").addEventListener("click", () => downloadCard(R));
   $("#btn-restart").addEventListener("click", () => location.reload());
   $("#btn-extend")?.addEventListener("click", extendRun);
+  $("#btn-invite3")?.addEventListener("click", () => { $("#btn-defi").click(); $("#btn-defi").scrollIntoView({ behavior: "smooth", block: "center" }); });
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => drawShareCard($("#share-cv"), R));
 }
 

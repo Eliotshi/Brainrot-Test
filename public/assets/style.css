@@ -356,6 +356,10 @@ a{color:var(--t5)}
 .brow .tr i{position:absolute;inset:0 auto 0 0;border-radius:5px;background:var(--muted);width:0;transition:width 1.2s}
 .brow.me .tr i{background:var(--heat)}
 .brow .v{text-align:right;font-family:var(--f-mono)}
+.cmp-lock{max-width:560px}
+.cmp-lock .pc{font-family:var(--f-mono);font-weight:700;font-size:2.4rem;margin-top:8px}
+.lockbar{height:10px;border-radius:5px;background:var(--ink4);overflow:hidden;margin:14px 0 18px}
+.lockbar i{display:block;height:100%;background:var(--heat)}
 .fineprint{font-size:.8rem;color:var(--dim);margin-top:14px}
 
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}

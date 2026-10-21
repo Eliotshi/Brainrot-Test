@@ -31,7 +31,7 @@
       <div>
         <p class="eyebrow">Test adaptatif · 128 questions en banque · 8 axes</p>
         <h1 style="margin-top:16px">Ton cerveau est&#8209;il <span class="heat-text">cramé</span> par l'IA&nbsp;?</h1>
-        <p class="lede">Chaque réponse choisit la question suivante. En quelques minutes, on mesure <b>ce que tu délègues vraiment</b> à l'IA : écrire, réfléchir, retenir, décider, aimer. Tu repars avec ta <b>température à cœur</b>, ton <b>archétype parmi 12</b> et ta place face aux autres joueurs.</p>
+        <p class="lede">Chaque réponse choisit la question suivante. En quelques minutes, on mesure <b>ce que tu délègues vraiment</b> à l'IA : écrire, réfléchir, retenir, décider, aimer. Tu repars avec ta <b>température à cœur</b>, ton <b>archétype parmi 12</b> et ta <b>carte thermique sur 8 axes</b>.</p>
         <div class="hero-cta">
           <button class="btn btn-hot btn-big" data-go="setup">Prendre ma température <span data-icon="arrow"></span></button>
           <span class="mono" style="color:var(--muted);font-size:.85rem">Gratuit · 4 ou 10 min</span>
@@ -61,10 +61,10 @@
       <div class="section-head">
         <p class="eyebrow">Ce que tu vas recevoir</p>
         <h2 style="margin-top:10px">Un rapport complet. On te montre le début.</h2>
-        <p>Voici un exemple de rapport. Les parties floutées sont calculées à partir de tes réponses, et se débloquent à la fin du test.</p>
+        <p>Voici un exemple fictif. Dans le tien, les parties floutées sont calculées à partir de tes réponses et se débloquent à la fin du test.</p>
       </div>
       <div class="preview">
-        <span class="sticker">Exemple de rapport</span>
+        <span class="sticker">Exemple fictif</span>
         <div class="pv-card pv-radar">
           <span class="k">Carte thermique · 8 axes</span>
           <div id="pv-radar"></div>
@@ -73,7 +73,7 @@
           <span class="pv-lock" data-icon="lock"></span>
           <span class="k">Ton archétype</span>
           <div class="v blur">Perroquet Stochastique</div>
-          <p style="color:var(--muted);font-size:.88rem;margin-top:6px">1 profil sur 12 · <span class="blur-soft">7 %</span> des joueurs</p>
+          <p style="color:var(--muted);font-size:.88rem;margin-top:6px">1 profil sur 12</p>
         </div>
         <div class="pv-card">
           <span class="pv-lock" data-icon="lock"></span>
@@ -83,9 +83,9 @@
         </div>
         <div class="pv-card">
           <span class="pv-lock" data-icon="lock"></span>
-          <span class="k">Face aux autres</span>
+          <span class="k">Face aux autres · dès 50 joueurs par groupe</span>
           <div class="pv-list">
-            <div class="row"><span>Plus cramé·e que</span><b class="blur">84 %</b></div>
+            <div class="row"><span>Plus cramé·e que</span><b class="blur">·· %</b></div>
             <div class="row"><span>Autonomie sans IA</span><b class="blur">6 h 40</b></div>
             <div class="row"><span>Ton pire binôme</span><b class="blur">Cerveau Bleu</b></div>
           </div>
@@ -140,7 +140,7 @@
   </section>
   <footer class="wrap foot">
     <span>Test humoristique, pas un diagnostic médical.</span>
-    <span>Comparaisons : vrais joueurs dès 50 réponses par groupe, panel modélisé avant.</span>
+    <span>Comparaisons affichées seulement à partir de 50 vrais joueurs par groupe. Aucun chiffre simulé.</span>
   </footer>
 </main>
 
@@ -180,7 +180,7 @@
             <span class="t">Express</span><span class="d mono">20 questions · ~4 min</span>
             <ul>
               <li class="yes"><span data-icon="check"></span>Rapport complet</li>
-              <li class="yes"><span data-icon="check"></span>Précision du diagnostic ~77 %</li>
+              <li class="yes"><span data-icon="check"></span>Au moins 2 questions par axe</li>
               <li class="no"><span data-icon="x"></span>Questions bonus en cascade limitées</li>
               <li class="no"><span data-icon="x"></span>Badge Marathon</li>
             </ul>
@@ -190,7 +190,7 @@
             <span class="t">Diagnostic complet</span><span class="d mono">50 questions · ~10 min</span>
             <ul>
               <li class="yes"><span data-icon="check"></span>Rapport complet</li>
-              <li class="yes"><span data-icon="check"></span>Précision du diagnostic ~90 %</li>
+              <li class="yes"><span data-icon="check"></span>Au moins 5 questions par axe</li>
               <li class="yes"><span data-icon="check"></span>Questions bonus en cascade</li>
               <li class="yes"><span data-icon="check"></span>Badge Marathon</li>
             </ul>
@@ -270,13 +270,13 @@
         <ul class="locked-list g-b" id="gate-locked"></ul>
         <form class="formcard" id="lead-form" novalidate>
           <h2>Débloque ton rapport complet</h2>
-          <p class="sub">Il s'affiche tout de suite. On t'en envoie aussi une copie pour la garder.</p>
+          <p class="sub">Il s'affiche tout de suite.<span id="gate-copy"></span></p>
           <div class="field"><label for="f-name">Prénom</label><input id="f-name" name="name" autocomplete="given-name" maxlength="60" required><span class="err" id="e-name"></span></div>
           <div class="field"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" autocomplete="email" maxlength="160" required><span class="err" id="e-email"></span></div>
           <input type="text" id="f-company" name="company" tabindex="-1" autocomplete="off" class="sr" aria-hidden="true">
           <label class="check"><input type="checkbox" id="f-mkt"><span>J'accepte aussi de recevoir des conseils pour faire redescendre la température, et l'offre Désintox. Désinscription en un clic.</span></label>
           <button class="btn btn-hot btn-big" type="submit" id="btn-unlock"><span data-icon="unlock"></span>Voir mon rapport complet</button>
-          <p class="fine">Ton e-mail sert à t'envoyer ton rapport. Jamais revendu.</p>
+          <p class="fine" id="gate-fine">Ton e-mail n'est jamais revendu.</p>
         </form>
       </div>
     </section>

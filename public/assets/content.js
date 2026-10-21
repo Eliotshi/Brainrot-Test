@@ -182,20 +182,6 @@ const REACTIONS = [
   ["Aïe. Ça sent le brûlé.","Thermomètre affolé.","Flambé !","Alerte incendie.","Les pompiers sont prévenus."],
 ];
 
-/* ------------------------------------------------------------
-   PANEL DE RÉFÉRENCE MODÉLISÉ
-   Moyennes par axe (0-100) et écart-type. Ce sont des hypothèses
-   de départ, pas des mesures : remplace-les par tes vraies stats
-   dès que tu as assez de joueurs.
-   ------------------------------------------------------------ */
-const PANEL = {
-  sd: 20,
-  base: {
-    etu: { plume:52, pensee:48, memoire:44, boussole:38, attention:55, idees:45, coeur:36, perroquet:46 },
-    pro: { plume:50, pensee:42, memoire:40, boussole:34, attention:46, idees:40, coeur:26, perroquet:38 },
-  },
-  age: { "18-24":5, "25-34":2, "35-44":-3, "45+":-8 },
-};
 const PROFILES = { etu:"Étudiant·e / jeune actif·ve", pro:"Professionnel·le en poste" };
 const PROFILES_PL = { etu:"étudiant·es et jeunes actif·ves", pro:"pros" };
 const AGES = ["18-24","25-34","35-44","45+"];
