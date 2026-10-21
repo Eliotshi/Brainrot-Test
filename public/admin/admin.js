@@ -184,7 +184,8 @@ function openLead(l) {
       <dt>Axes les plus chauds</dt><dd>${esc(axes || "–")}</dd>
       <dt>Mode</dt><dd>${esc(l.mode || "–")}${l.extended ? " (affiné)" : ""}</dd>
       <dt>Comportement</dt><dd>${[l.offer_clicked && "a cliqué l'offre", l.shared && "a partagé", l.attempts > 1 && l.attempts + " passages"].filter(Boolean).join(" · ") || "–"}</dd>
-      <dt>Opt-in marketing</dt><dd>${l.consent_marketing ? "Oui" : "Non (ne pas envoyer d'offre)"}</dd>
+      <dt>Opt-in marketing</dt><dd>${l.consent_marketing ? `Oui <button class="linkbtn" id="d-unsub" style="margin-left:8px">Retirer (réponse STOP)</button>` : "Non (ne pas envoyer d'offre)"}${l.unsubscribed_at ? `<br><span style="color:var(--muted)">Désinscrit·e le ${new Date(l.unsubscribed_at).toLocaleString("fr-FR")}</span>` : ""}</dd>
+      <dt>E-mails envoyés</dt><dd>${l.emails_sent || 0}${l.last_email_at ? ` · dernier le ${new Date(l.last_email_at).toLocaleString("fr-FR")}` : ""}</dd>
       <dt>Source</dt><dd>${esc(l.utm ? Object.entries(l.utm).map(([k, v]) => k + "=" + v).join(" ") : "–")}</dd>
       <dt>Créé le</dt><dd>${new Date(l.created_at).toLocaleString("fr-FR")}</dd>
     </dl>
@@ -194,6 +195,10 @@ function openLead(l) {
     <button class="btn btn-hot" id="d-save" style="margin-top:12px;width:100%">Enregistrer</button>
     <p class="err" id="d-msg" style="color:var(--muted)"></p>`;
   $("#d-close").addEventListener("click", () => { d.hidden = true; });
+  $("#d-unsub")?.addEventListener("click", async () => {
+    const r = await patch(l.id, { unsubscribe: true });
+    if (r) openLead(r);
+  });
   $("#d-save").addEventListener("click", async () => {
     const r = await patch(l.id, { status: $("#d-status").value, notes: $("#d-notes").value });
     $("#d-msg").textContent = r ? "Enregistré." : "Échec de l'enregistrement.";
@@ -205,7 +210,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("#drawer")
 /* ---------- CSV ---------- */
 $("#btn-csv").addEventListener("click", () => {
   const rows = filtered();
-  const cols = ["created_at", "first_name", "email", "consent_marketing", "profile", "age", "situation", "spend", "payer", "wish", "level", "temp", "archetype", "buying_power", "motivation", "segment", "incentive", "incentive_label", "offer_clicked", "shared", "status", "notes"];
+  const cols = ["created_at", "first_name", "email", "consent_marketing", "profile", "age", "situation", "spend", "payer", "wish", "level", "temp", "archetype", "buying_power", "motivation", "segment", "incentive", "incentive_label", "offer_clicked", "shared", "emails_sent", "last_email_at", "unsubscribed_at", "status", "notes"];
   const cell = v => { const s = Array.isArray(v) ? v.join("|") : v == null ? "" : String(v); return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   const csv = "﻿" + [cols.join(","), ...rows.map(r => cols.map(c => cell(r[c])).join(","))].join("\n");
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));

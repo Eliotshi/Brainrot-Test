@@ -3,6 +3,7 @@ import { rpc, json, body, configured, UUID } from "../lib/supabase.js";
 import { leadFields } from "../lib/scoring.js";
 import { mailConfigured, sendMail } from "../lib/mailer.js";
 import { buildResultEmail } from "../lib/email.js";
+import { unsubscribeUrl } from "../lib/unsubscribe.js";
 
 const EMAIL = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -12,7 +13,7 @@ export default async function handler(req, res) {
   const b = body(req);
   if (b.company) return json(res, 200, { ok: true }); // honeypot : bot, on ignore en silence
   const email = String(b.email || "").trim().toLowerCase();
-  const first_name = String(b.first_name || "").trim().slice(0, 60);
+  const first_name = String(b.first_name || "").replace(/[\u0000-\u001f\u007f<>"]/g, "").trim().slice(0, 60);
   if (!EMAIL.test(email) || email.length > 160) return json(res, 400, { error: "invalid_email" });
   const consent_marketing = b.consent_marketing === true;
   try {
@@ -24,14 +25,20 @@ export default async function handler(req, res) {
       first_name: first_name || null,
       consent_marketing,
       utm: utm && Object.keys(utm).length ? utm : (result && result.utm) || null,
-      ...(result ? { result_id: result.id, ...leadFields(result, { consent_marketing, ...(result.lead || {}) }) } : {}),
+      ...(result ? { result_id: result.id, ...leadFields(result, { ...(result.lead || {}), consent_marketing }) } : {}),
     };
     await rpc("cc_upsert_lead", { p_email: email, p: fields });
-    // e-mail de résultats : attendu avant de répondre (Vercel gèle la fonction après la réponse)
+    // e-mail de résultats : attendu avant de répondre (Vercel gèle la fonction après la réponse).
+    // Le navigateur n'attend pas cette réponse : le rapport s'affiche tout de suite.
+    // cc_claim_email applique les plafonds (3 min et 5/jour par adresse, 450/jour au total).
     if (result && mailConfigured()) {
       try {
-        const mail = buildResultEmail({ firstName: first_name, result, consentMarketing: consent_marketing });
-        await sendMail({ to: email, ...mail });
+        const leadId = await rpc("cc_claim_email", { p_email: email });
+        if (leadId) {
+          const unsub = consent_marketing ? unsubscribeUrl(leadId) : null;
+          const mail = buildResultEmail({ firstName: first_name, result, consentMarketing: consent_marketing, unsubscribeUrl: unsub });
+          await sendMail({ to: email, ...mail, unsubscribeUrl: unsub });
+        }
       } catch (e) { console.error("mail", e.message); }
     }
     return json(res, 200, { ok: true });

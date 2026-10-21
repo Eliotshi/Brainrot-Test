@@ -3,7 +3,7 @@
 A gamified lead magnet: the adaptive quiz « Ton cerveau est-il cramé par l'IA ? ». It comes with a results report, lead capture, and a small CRM that scores each lead's buying power and motivation.
 
 - **Front end:** static HTML, CSS and JS in `public/`, with no build step.
-- **API:** Vercel serverless functions in `api/`, with no npm dependencies.
+- **API:** Vercel serverless functions in `api/`. The only npm dependency is `nodemailer`, for the results email.
 - **Database:** Supabase Postgres. Tables are locked down with RLS. The server uses the publishable key and goes through `public.cc_*` functions; the CRM functions also require a server token.
 
 ## How it works
@@ -32,7 +32,7 @@ A gamified lead magnet: the adaptive quiz « Ton cerveau est-il cramé par l'IA 
 
 ## Setup
 
-1. **Supabase:** run both files in `supabase/migrations/` in order, then store the hash of your server token:
+1. **Supabase:** run the files in `supabase/migrations/` in order, then store the hash of your server token:
    `insert into private.app_config values ('admin_token_sha256', encode(extensions.digest('<ADMIN_RPC_TOKEN>', 'sha256'), 'hex'));`
 2. **Vercel:** import this GitHub repo. The framework preset is "Other", with no build command. `vercel.json` sets the output directory to `public`.
 3. **Vercel environment variables** (see `.env.example`):
@@ -57,5 +57,9 @@ Leads are stored in Supabase with a separate marketing-consent flag.
 As soon as the form is submitted, `api/lead.js` sends the results report by email through Gmail (`lib/mailer.js`, template in `lib/email.js`, texts taken from `public/assets/content.js`):
 - **Everyone** gets their report: score, level, archetype, the 8 axes, their two hottest axes and 3 free challenges.
 - **Only leads with `consent_marketing = true`** also get the sales section for the Désintox programme (21-day plan built on their two hottest axes, price, checkout button using `CHECKOUT_URL`).
+
+Safeguards:
+- **Send caps** (`cc_claim_email`, migration `20261020020000_email.sql`): 1 email every 3 minutes and 5 per 24 h per address, and 450 per 24 h in total, to stay under Gmail's limit and stop the form being used to spam strangers.
+- **One-click unsubscribe** for the marketing version: a signed link (`lib/unsubscribe.js`, `api/unsubscribe.js`) plus `List-Unsubscribe` / `List-Unsubscribe-Post` headers. It turns `consent_marketing` off. "STOP" replies can be handled from the lead drawer in `/admin` ("Retirer").
 
 Setup: turn on 2-step verification on the Gmail account, create an app password at myaccount.google.com/apppasswords, then add `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `MAIL_FROM_NAME` and `SITE_URL` to the Vercel environment variables. Without `GMAIL_USER` and `GMAIL_APP_PASSWORD`, no email is sent. Gmail caps sending at about 500 emails a day; switch to a dedicated provider (Brevo, Resend) beyond that.
