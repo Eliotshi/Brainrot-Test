@@ -2,7 +2,7 @@
 // Le navigateur envoie x-admin-key = ADMIN_PASSWORD ; le serveur appelle ensuite
 // les fonctions cc_admin_* avec le jeton ADMIN_RPC_TOKEN (jamais exposé au navigateur).
 //   GET   → leads + entonnoir
-//   PATCH → { id, status?, notes? }
+//   PATCH → { id, status?, notes? } ou { id, unsubscribe: true } (réponse « STOP » reçue)
 import { timingSafeEqual, createHash } from "node:crypto";
 import { rpc, json, body, configured, UUID } from "../../lib/supabase.js";
 
@@ -29,6 +29,7 @@ export default async function handler(req, res) {
     if (req.method === "PATCH") {
       const b = body(req);
       if (!UUID.test(b.id || "")) return json(res, 400, { error: "invalid_id" });
+      if (b.unsubscribe === true) return json(res, 200, { lead: await rpc("cc_admin_unsubscribe", { p_token: token, p_id: b.id }) });
       if (b.status !== undefined && !STATUSES.includes(b.status)) return json(res, 400, { error: "invalid_status" });
       if (b.status === undefined && b.notes === undefined) return json(res, 400, { error: "empty_patch" });
       const lead = await rpc("cc_admin_update", {

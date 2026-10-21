@@ -4,5 +4,6 @@
   "private": true,
   "description": "Lead magnet gamifié : test adaptatif « Ton cerveau est-il cramé par l'IA ? » + CRM.",
   "type": "module",
-  "engines": { "node": ">=20" }
+  "engines": { "node": ">=20" },
+  "dependencies": { "nodemailer": "^6.9.16" }
 }
